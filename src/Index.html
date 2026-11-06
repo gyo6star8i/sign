@@ -113,11 +113,58 @@
   .doc.audit h1 { font-size: 14pt; }
   .doc.audit td, .doc.audit th { font-size: 9pt; text-align: center; }
   .doc.audit .hash { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 8pt; word-break: break-all; }
-  @page { size: A4; margin: 0; }
+  /* "위 사실을 확인함 ~ 서명표"는 한 덩어리로: 페이지가 모자라면 통째로 다음 쪽으로 넘어갑니다 */
+  .doc .sign-block, .doc .sign, .doc .sign tr { break-inside: avoid; page-break-inside: avoid; }
+
+  /* 출력(인쇄·PDF): A4 여백 15mm 안에 맞춤 */
+  .print-root .doc { width: auto; min-height: 0; padding: 0; margin: 0; box-shadow: none; }
+  .print-root .doc + .doc { margin-top: 0; break-before: page; page-break-before: always; }
+
+  /* 한 쪽에 안 들어갈 때 단계적으로 줄이기 (fit1 → fit3) */
+  .doc.fit1 { line-height: 1.45; }
+  .doc.fit1 h1 { margin: 2mm 0 4mm; }
+  .doc.fit1 .info .result td { height: 45mm; }
+  .doc.fit1 .confirm { margin: 5mm 0 2mm; }
+  .doc.fit1 .date, .doc.fit1 .school { margin-bottom: 3mm; }
+  .doc.fit1 .sign tr.r-pos td, .doc.fit1 .sign tr.r-pos th,
+  .doc.fit1 .sign tr.r-name td, .doc.fit1 .sign tr.r-name th,
+  .doc.fit1 .sign tr.r-sig td, .doc.fit1 .sign tr.r-sig th { height: 13mm; }
+  .doc.fit1 .sign tr.r-role td, .doc.fit1 .sign tr.r-role th { height: 9mm; }
+  .doc.fit1 .sign img { max-height: 12mm; }
+
+  .doc.fit2 { font-size: 9.5pt; line-height: 1.35; }
+  .doc.fit2 h1 { font-size: 15pt; margin: 0 0 3mm; }
+  .doc.fit2 td, .doc.fit2 th { padding: 3px 6px; }
+  .doc.fit2 .info .agenda td, .doc.fit2 .info .agenda th { padding-top: 6px; padding-bottom: 6px; }
+  .doc.fit2 .info .result td { height: 25mm; padding: 6px 8px 8px; }
+  .doc.fit2 .confirm { margin: 4mm 0 1mm; font-size: 10pt; }
+  .doc.fit2 .date { font-size: 14pt; margin-bottom: 2mm; }
+  .doc.fit2 .school { font-size: 15pt; margin-bottom: 3mm; }
+  .doc.fit2 .sign tr.r-pos td, .doc.fit2 .sign tr.r-pos th,
+  .doc.fit2 .sign tr.r-name td, .doc.fit2 .sign tr.r-name th,
+  .doc.fit2 .sign tr.r-sig td, .doc.fit2 .sign tr.r-sig th { height: 11mm; }
+  .doc.fit2 .sign tr.r-role td, .doc.fit2 .sign tr.r-role th { height: 8mm; }
+  .doc.fit2 .sign img { max-height: 10mm; }
+
+  .doc.fit3 { font-size: 8.5pt; line-height: 1.25; }
+  .doc.fit3 h1 { font-size: 13pt; margin: 0 0 2mm; }
+  .doc.fit3 td, .doc.fit3 th { padding: 2px 5px; }
+  .doc.fit3 .info .agenda td, .doc.fit3 .info .agenda th { padding-top: 3px; padding-bottom: 3px; }
+  .doc.fit3 .info .result td { height: auto; padding: 4px 6px 6px; }
+  .doc.fit3 .confirm { margin: 3mm 0 1mm; font-size: 9pt; }
+  .doc.fit3 .date { font-size: 12pt; margin-bottom: 1mm; }
+  .doc.fit3 .school { font-size: 13pt; margin-bottom: 2mm; }
+  .doc.fit3 .sign tr.r-pos td, .doc.fit3 .sign tr.r-pos th,
+  .doc.fit3 .sign tr.r-name td, .doc.fit3 .sign tr.r-name th,
+  .doc.fit3 .sign tr.r-sig td, .doc.fit3 .sign tr.r-sig th { height: 9mm; }
+  .doc.fit3 .sign tr.r-role td, .doc.fit3 .sign tr.r-role th { height: 7mm; }
+  .doc.fit3 .sign img { max-height: 8mm; }
+  .doc.fit3 .foot { margin-top: 2mm; }
+
+  @page { size: A4; margin: 15mm; }
   @media print {
     html, body { background: #fff !important; margin: 0 !important; }
-    .doc { box-shadow: none !important; margin: 0 !important; page-break-after: always; break-after: page; }
-    .doc:last-child { page-break-after: auto; break-after: auto; }
+    .doc { box-shadow: none !important; margin: 0 !important; }
   }
 </style>
 <style>
@@ -384,6 +431,7 @@
           <tr class="result-head"><td colspan="2">회의 결과</td></tr>
           <tr class="result"><td colspan="2">${esc(m.result)}</td></tr>
         </table>
+        <div class="sign-block">
         <div class="confirm">위 사실을 확인함</div>
         <div class="date">${esc(m.confirmDate)}</div>
         <div class="school">${esc(m.school)}</div>
@@ -395,6 +443,7 @@
           ${row('r-sig', '확인서명', sigCell)}
         </table>
         ${opts.footer ? `<div class="foot">${esc(opts.footer)}</div>` : ''}
+        </div>
       </div>`;
   }
 
@@ -893,11 +942,28 @@
     }));
   }
 
+  /**
+   * 출력용 HTML. 회의록 1쪽이 A4 한 장(여백 15mm 안: 180 x 267mm)에 들어가도록
+   * 실제로 그려 높이를 재고, 넘치면 줄간격·글자·칸 높이를 단계적으로 줄입니다(fit1~fit3).
+   * 그래도 넘치면 서명 블록이 통째로 다음 쪽으로 넘어갑니다.
+   */
   function buildPrintHtml(r, withAudit) {
     const footer = `문서번호 ${r.meeting.id.slice(0, 12)} · 문서 확인값 ${r.docHash.slice(0, 16)}`;
-    const docs = renderDoc(r.meeting, r.members, { showSignatures: true, footer })
-      + (withAudit ? renderAudit(r.meeting, r.members, r.docHash, r.logs) : '');
-    return docs;
+    const box = document.createElement('div');
+    box.className = 'print-root';
+    box.style.cssText = 'position:absolute;left:-10000px;top:0;width:180mm;visibility:hidden';
+    box.innerHTML = renderDoc(r.meeting, r.members, { showSignatures: true, footer });
+    document.body.appendChild(box);
+    const doc = box.firstElementChild;
+    const limit = 262 * 96 / 25.4; // 267mm에서 약간 여유
+    for (const level of ['', 'fit1', 'fit2', 'fit3']) {
+      doc.classList.remove('fit1', 'fit2', 'fit3');
+      if (level) doc.classList.add(level);
+      if (doc.scrollHeight <= limit) break;
+    }
+    const html = box.innerHTML;
+    box.remove();
+    return html + (withAudit ? renderAudit(r.meeting, r.members, r.docHash, r.logs) : '');
   }
 
   function adminPrint(r) {
@@ -918,6 +984,7 @@
       </div>`, (back, close) => {
       $('#doPrint', back).addEventListener('click', () => {
         const area = $('#print-area');
+        area.className = 'print-root';
         area.innerHTML = buildPrintHtml(r, $('#audit', back).checked);
         close();
         const imgs = $all('img', area);
@@ -927,8 +994,8 @@
       });
       $('#drive', back).addEventListener('click', async (e) => {
         const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${$('#doc-css').textContent}
-          body{margin:0} .doc{box-shadow:none} .doc + .doc{margin-top:0; page-break-before:always}</style></head>
-          <body>${buildPrintHtml(r, $('#audit', back).checked)}</body></html>`;
+          body{margin:0}</style></head>
+          <body><div class="print-root">${buildPrintHtml(r, $('#audit', back).checked)}</div></body></html>`;
         try {
           const res = await busy(e.currentTarget, () => call('savePdf', { token: state.adminToken, meetingId: r.meeting.id, html }));
           const pm = $('#pm', back);
