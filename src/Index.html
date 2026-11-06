@@ -222,6 +222,100 @@
     return Array.from(new Uint8Array(d)).map((b) => b.toString(16).padStart(2, '0')).join('');
   }
 
+  // ───── 회의록 예시 (2026 계약제교원 운영 지침, 경상북도교육청 기준) ─────
+  // ○ 표시는 학교 상황에 맞게 고쳐 쓰는 부분입니다.
+  const TEMPLATES = [
+    {
+      label: '예시1 전일제강사 긴급채용',
+      agenda: '결원 보충 전일제 강사(1개월 미만) 긴급 채용 심의',
+      result: [
+        '1. 사유',
+        '  - ○학년 ○반 담임교사의 갑작스러운 병가(○○. ○. ○. ~ ○○. ○. ○., ○일)로 결원 발생',
+        '  - 근무 예정일이 공고일로부터 4일 이내로, 공고 기간을 운영할 수 없는 부득이한 경우에 해당함',
+        '  - 근거: 2026 계약제교원 운영 지침 19쪽(2. 강사 - 바. 채용 업무 처리 2), 4))',
+        '',
+        '2. 심의 내용',
+        '  - 채용 구분: 결원 보충 전일제 강사(4일 이상 1개월 미만)',
+        '  - 채용 기간: ○○. ○. ○.(○) ~ ○○. ○. ○.(○)',
+        '  - 채용 방법: 채용 공고 생략, 인사자문위원회 면접 등 적부 심사 후 채용',
+        '  - 자격 확대: 임용 상한 연령 확대 및 명예퇴직 2년 미만자 포함',
+        '  - 대상자: 초등학교 정교사(○급) 자격 소지, 담임 경력 ○년의 퇴직 교원 1명',
+        '',
+        '3. 결과',
+        '  - 대상자는 교원 자격을 갖추었고 학급 담임 경험이 풍부하여 학생 생활지도와 수업 운영에 적합하다고 판단함',
+        '  - 결격사유 조회 및 범죄경력 조회 결과 이상이 없을 경우 전일제 강사로 채용하기로 함',
+        '  - 임용 후 교육지원청에 임용 결과를 보고하기로 함',
+      ],
+    },
+    {
+      label: '예시2 기간제교원 연장 계약',
+      agenda: '기간제교원 연장 계약 심의',
+      result: [
+        '1. 사유',
+        '  - ○○○ 교사의 휴직 기간 연장(○○. ○. ○. ~ ○○. ○. ○.)으로 동일 결원이 기간 단절 없이 연장됨',
+        '  - 현재 근무 중인 기간제교원 ○○○ 선생님이 연장 계약을 희망함',
+        '  - 근거: 2026 계약제교원 운영 지침 14쪽(1. 기간제교원 - 바. 채용 기간 7) 연장 계약)',
+        '',
+        '2. 심의 내용',
+        '  - 연장 조건 확인: ① 동일 학교 ② 동일 교원 결원 ③ 기간 단절 없음 ④ 기존 근무자 희망 - 모두 충족',
+        '  - 2차 공개채용 자격 확대(상한 연령 확대, 명예퇴직 2년 미만, 학교급 불일치, 유사 과목)로 채용된 사람이 아님을 확인함',
+        '  - 연장 기간: ○○. ○. ○. ~ ○○. ○. ○.',
+        '  - 근무 실적: 학습지도와 생활지도를 성실히 수행하고, 학급 운영이 안정적임',
+        '',
+        '3. 결과',
+        '  - 새로운 채용 절차 없이 ○○○ 선생님과 연장 계약을 체결하기로 함',
+        '  - 연장 계약서를 새로 작성하고 호봉을 다시 획정하기로 함',
+      ],
+    },
+    {
+      label: '예시3 2차 공고 자격 확대',
+      agenda: '기간제교원 2차 공개채용 자격 확대 심의',
+      result: [
+        '1. 사유',
+        '  - ○학년 담임(○○ 교사 휴직) 기간제교원 1차 공개채용(○○. ○. ○. ~ ○. ○.) 결과 적격한 지원자가 없음',
+        '  - 학생 교육과정 운영에 차질이 없도록 2차 공개채용 시 응시 자격을 확대할 필요가 있음',
+        '  - 근거: 2026 계약제교원 운영 지침 13쪽(1. 기간제교원 - 마. 채용 업무 처리 2)), 2쪽(라. 임용 상한 연령)',
+        '',
+        '2. 심의 내용',
+        '  - 1차 공고 경과: 지원자 ○명, 서류·면접 심사 결과 적격자 없음',
+        '  - 확대할 자격: 임용 상한 연령 만 70세까지, 퇴직자(명예퇴직 2년 미만 포함), 학교급 불일치·유사 과목 자격 소지자',
+        '  - 2차 공고: 경상북도교육청 홈페이지, 3일 이상(공고일 제외, 공휴일 포함)',
+        '  - 2차 공고로 자격을 확대해 채용한 사람은 이후 연장 계약이 불가함을 계약 시 안내',
+        '',
+        '3. 결과',
+        '  - 위와 같이 자격을 확대하여 2차 공개채용을 실시하기로 함',
+        '  - 심사는 1차와 같은 기준(서류심사, 면접)으로 공정하게 실시하기로 함',
+      ],
+    },
+    {
+      label: '예시4 기간제교원 채용 심사',
+      agenda: '기간제교원 채용 심사(서류·면접) 결과 심의',
+      result: [
+        '1. 사유',
+        '  - ○○ 교사의 ○○휴직(○○. ○. ○. ~ ○○. ○. ○.)으로 기간제교원 채용 공고 실시(○○. ○. ○. ~ ○. ○.)',
+        '  - 채용심사위원회를 인사자문위원회로 갈음하여 운영함',
+        '  - 근거: 2026 계약제교원 운영 지침 13쪽(1. 기간제교원 - 마. 채용 업무 처리 1), 3))',
+        '',
+        '2. 심의 내용',
+        '  - 지원자: ○명 (서류심사 통과 ○명)',
+        '  - 서류심사: 자격 요건, 경력, 연수 이수 현황 확인',
+        '  - 면접심사: 교육관, 학습지도 능력, 학생 생활지도, 업무 수행 능력 평가',
+        '  - 면접 시 심사 기준과 관련 없거나 인권 침해 소지가 있는 질문은 하지 않음',
+        '',
+        '3. 결과',
+        '  - 심사 점수 합산 결과 최고점자 ○○○를 채용 대상자로, 차점자 ○○○를 예비 합격자로 선정함',
+        '  - 결격사유 및 범죄경력(아동학대, 성범죄) 조회 결과 이상이 없을 경우 채용 계약을 체결하기로 함',
+        '  - 서류심사표, 면접표 등 선발 전형 자료는 준영구 보관하기로 함',
+      ],
+    },
+  ];
+
+  /** 오늘 날짜를 회의록 일시 형식으로: 2026. 11. 16.(월) ○○:○○~ */
+  function todayWithDay() {
+    const d = new Date();
+    return `${todayKo()}(${'일월화수목금토'[d.getDay()]}) ○○:○○~`;
+  }
+
   function todayKo() {
     const d = new Date();
     return `${d.getFullYear()}. ${d.getMonth() + 1}. ${d.getDate()}.`;
@@ -547,6 +641,10 @@
         <form id="f">
           <div class="card">
             <h2>회의 정보</h2>
+            <div style="margin:-4px 0 14px">
+              <div class="muted" style="margin-bottom:6px">예시 불러오기 <span style="font-weight:400">(2026 계약제교원 운영 지침 기준, ○ 부분을 고쳐 쓰세요)</span></div>
+              <div class="row">${TEMPLATES.map((t, i) => `<button type="button" class="small" data-tpl="${i}">${esc(t.label)}</button>`).join('')}</div>
+            </div>
             <label class="f"><span>회의록 제목</span><input type="text" name="title" required></label>
             <div class="grid2">
               <label class="f"><span>일시</span><input type="text" name="datetime" placeholder="예: 2026. 9. 15.(수) 13:40~"></label>
@@ -583,6 +681,23 @@
     const fill = (m) => ['title', 'datetime', 'place', 'committee', 'agenda', 'result', 'confirmDate', 'school']
       .forEach((k) => { form.elements[k].value = m[k] || ''; });
     fill(meeting);
+
+    const blank = defaultMeeting();
+    $all('[data-tpl]').forEach((b) => b.addEventListener('click', () => {
+      const t = TEMPLATES[Number(b.dataset.tpl)];
+      const el = form.elements;
+      const touched = (el.agenda.value.trim() && el.agenda.value !== blank.agenda)
+        || (el.result.value.trim() && el.result.value !== blank.result);
+      if (touched && !confirm(`'${t.label}' 내용으로 안건과 회의 결과를 바꿀까요? 지금 입력한 내용은 지워집니다.`)) return;
+      el.agenda.value = t.agenda;
+      el.result.value = t.result.join('\n');
+      if (!el.datetime.value.trim()) el.datetime.value = todayWithDay();
+      if (!el.place.value.trim()) el.place.value = '교무회의실';
+      if (!el.committee.value.trim()) el.committee.value = '인사자문위원회';
+      if (!el.confirmDate.value.trim()) el.confirmDate.value = todayKo();
+      toast(`${t.label}을(를) 불러왔습니다. ○ 부분을 고쳐 주세요`);
+      el.result.focus();
+    }));
 
     const tbody = $('#mrows');
     const addRow = (x) => {
@@ -646,6 +761,9 @@
     form.addEventListener('submit', async (ev) => {
       ev.preventDefault();
       const d = collect();
+      const left = ['datetime', 'place', 'agenda', 'result', 'confirmDate', 'school']
+        .filter((k) => (d.meeting[k] || '').includes('○')).length;
+      if (left && !confirm('아직 고치지 않은 ○ 표시가 남아 있습니다. 그대로 저장할까요?')) return;
       const send = (confirmReset) => call('saveMeeting', Object.assign({ token: state.adminToken, confirmReset }, d));
       try {
         let r;
