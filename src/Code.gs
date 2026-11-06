@@ -17,7 +17,7 @@ const SHEETS = {
   MEMBERS: {
     name: 'Members',
     headers: ['meetingId', 'memberId', 'order', 'role', 'position', 'name',
-      'pwHash', 'salt', 'signedAt', 'signature', 'docHash', 'failCount'],
+      'pwHash', 'salt', 'signedAt', 'signature', 'docHash', 'failCount', 'code'],
   },
   LOG: {
     name: 'Log',
@@ -29,6 +29,10 @@ const SHEETS = {
   },
 };
 
+// 위원에게 보내는 짧은 링크의 앞부분(GitHub Pages). 비워 두면 긴 웹 앱 주소를 그대로 씁니다.
+const SHORT_LINK_BASE = 'https://gyo6star8i.github.io/sign/';
+const CODE_CHARS = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ'; // 헷갈리는 0/O, 1/I 제외
+
 const MEETING_FIELDS = ['title', 'datetime', 'place', 'committee', 'agenda', 'result', 'confirmDate', 'school'];
 const ADMIN_TTL = 6 * 60 * 60;   // 관리자 로그인 유지: 6시간
 const MEMBER_TTL = 2 * 60 * 60;  // 위원 로그인 유지: 2시간
@@ -38,11 +42,19 @@ const MAX_SIGNATURE_CHARS = 45000; // 시트 셀 한도(5만 자) 안쪽
 // ───────────────────────── 웹앱 진입점 ─────────────────────────
 
 function doGet(e) {
-  const params = (e && e.parameter) || {};
+  const params = Object.assign({}, (e && e.parameter) || {});
+  // 짧은 링크(?k=코드)로 들어오면 해당 위원의 회의록으로 연결합니다.
+  if (params.k) {
+    const code = String(params.k).toUpperCase().trim();
+    const mem = code && readAll(SHEETS.MEMBERS).find((r) => r.code === code);
+    params.m = mem ? mem.meetingId : 'invalid';
+    params.u = mem ? mem.memberId : '';
+  }
   const t = HtmlService.createTemplateFromFile('Index');
   t.boot = JSON.stringify({
     params: { page: params.page || '', m: params.m || '', u: params.u || '' },
     appUrl: ScriptApp.getService().getUrl(),
+    shortBase: SHORT_LINK_BASE,
   }).replace(/</g, '\\u003c');
   return t.evaluate()
     .setTitle('회의록 전자서명')
@@ -134,8 +146,9 @@ function listMeetings(p) {
 function getMeeting(p) {
   requireAdmin(p);
   const meeting = findMeeting(p.id);
+  ensureCodes(p.id);
   const members = membersOf(p.id).map((m) => ({
-    memberId: m.memberId, order: Number(m.order), role: m.role, position: m.position, name: m.name,
+    code: m.code, memberId: m.memberId, order: Number(m.order), role: m.role, position: m.position, name: m.name,
     signedAt: m.signedAt, signature: m.signature, docHash: m.docHash,
     locked: Number(m.failCount || 0) >= MAX_MEMBER_FAILS,
   }));
@@ -185,6 +198,7 @@ function saveMeeting(p) {
     existing.forEach((m) => { existingById[m.memberId] = m; });
 
     const issued = [];
+    const usedCodes = new Set(readAll(SHEETS.MEMBERS).map((r) => r.code).filter(Boolean));
     const pendingLogs = [];
     const nextMembers = inputMembers.map((m, i) => {
       const prev = m.memberId && existingById[m.memberId];
@@ -197,8 +211,9 @@ function saveMeeting(p) {
         meetingId: meeting.id, memberId: newId(), order: i + 1,
         role: m.role, position: m.position, name: m.name,
         pwHash: hash(salt, pw), salt, signedAt: '', signature: '', docHash: '', failCount: 0,
+        code: newCode(usedCodes),
       };
-      issued.push({ memberId: row.memberId, name: row.name, password: pw });
+      issued.push({ memberId: row.memberId, code: row.code, name: row.name, password: pw });
       pendingLogs.push([row.memberId, 'issue-password', row.name]);
       return row;
     });
@@ -259,7 +274,7 @@ function reissuePassword(p) {
     member.failCount = 0;
     updateMember(member);
     log(p.meetingId, p.memberId, 'reissue-password', member.name);
-    return { memberId: member.memberId, name: member.name, password: pw };
+    return { memberId: member.memberId, code: member.code, name: member.name, password: pw };
   });
 }
 
@@ -433,6 +448,28 @@ function docHash(meeting, members) {
     Utilities.Charset.UTF_8));
 }
 
+/** 짧은 링크 코드가 없는 위원(이전에 만든 회의록)에게 코드를 붙여 줍니다. */
+function ensureCodes(meetingId) {
+  if (membersOf(meetingId).every((m) => m.code)) return;
+  withLock(() => {
+    const used = new Set(readAll(SHEETS.MEMBERS).map((r) => r.code).filter(Boolean));
+    membersOf(meetingId).filter((m) => !m.code).forEach((m) => {
+      m.code = newCode(used);
+      updateMember(m);
+    });
+  });
+}
+
+/** 6자리 짧은 코드 (겹치지 않게) */
+function newCode(used) {
+  for (;;) {
+    const hex = Utilities.getUuid().replace(/-/g, '');
+    let code = '';
+    for (let i = 0; i < 6; i++) code += CODE_CHARS[parseInt(hex.substr(i * 2, 2), 16) % CODE_CHARS.length];
+    if (!used.has(code)) { used.add(code); return code; }
+  }
+}
+
 function findMeeting(id) {
   const m = readAll(SHEETS.MEETINGS).find((r) => r.id === id);
   if (!id || !m) throw new Error('회의록을 찾을 수 없습니다. 링크를 다시 확인해 주세요.');
@@ -487,6 +524,9 @@ function getSheet(def) {
     sheet = ss.insertSheet(def.name);
     sheet.getRange(1, 1, 1, def.headers.length).setValues([def.headers]);
     sheet.setFrozenRows(1);
+  } else if (sheet.getRange(1, def.headers.length, 1, 1).getValues()[0][0] !== def.headers[def.headers.length - 1]) {
+    // 새 칸이 추가된 버전으로 업데이트한 경우 머리글을 맞춥니다.
+    sheet.getRange(1, 1, 1, def.headers.length).setValues([def.headers]);
   }
   return sheet;
 }

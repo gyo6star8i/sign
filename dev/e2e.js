@@ -32,6 +32,7 @@ const BASE = 'http://localhost:8787/exec';
   await admin.screenshot({ path: OUT + '/2-passwords.png' });
   const texts = await admin.$$eval('.modal pre.copy', (els) => els.map((e) => e.textContent));
   const creds = texts.map((t) => ({ link: t.match(/링크: (\S+)/)[1], pw: t.match(/비밀번호: (\d{6})/)[1] }));
+  console.log('short link:', creds[0].link);
   await admin.click('.modal [data-close]');
 
   // 위원 서명 (휴대폰 화면). 마지막 위원은 미서명으로 남겨 둡니다.
@@ -78,6 +79,10 @@ const BASE = 'http://localhost:8787/exec';
     if (i === 1) await pg.screenshot({ path: OUT + '/4-member-done.png', fullPage: true });
     await pg.close();
   }
+  const bad = await phone.newPage();
+  await bad.goto('http://localhost:8787/short/?ZZZZZZ');
+  await bad.waitForSelector('.msg.err');
+  console.log('bad code:', await bad.textContent('.msg.err'));
   const again = await phone.newPage();
   await again.goto(creds[0].link);
   await again.fill('#pw', creds[0].pw);

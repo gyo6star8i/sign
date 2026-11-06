@@ -227,7 +227,8 @@
     return `${d.getFullYear()}. ${d.getMonth() + 1}. ${d.getDate()}.`;
   }
 
-  function memberLink(meetingId, memberId) {
+  function memberLink(meetingId, memberId, code) {
+    if (code && BOOT.shortBase) return `${BOOT.shortBase}?${code}`;
     const base = BOOT.appUrl || location.href.split('?')[0];
     return `${base}?m=${encodeURIComponent(meetingId)}${memberId ? '&u=' + encodeURIComponent(memberId) : ''}`;
   }
@@ -642,7 +643,7 @@
   /** 발급된 비밀번호 안내 (이 창을 닫으면 다시 볼 수 없음) */
   function showIssued(meetingId, issued) {
     const meeting = state.current ? state.current.meeting : { title: '회의록' };
-    const texts = issued.map((x) => inviteText(meeting, x.name, memberLink(meetingId, x.memberId), x.password));
+    const texts = issued.map((x) => inviteText(meeting, x.name, memberLink(meetingId, x.memberId, x.code), x.password));
     modal(`
       <h2>위원 접속 비밀번호</h2>
       <div class="msg warn">비밀번호는 보안을 위해 지금만 보입니다. 창을 닫기 전에 각 위원께 전달하거나 복사해 두세요.
@@ -724,7 +725,7 @@
       const mem = r.members.find((x) => x.memberId === mid);
       try {
         if (b.dataset.act === 'link') {
-          copyText(inviteText(m, mem.name, memberLink(id, mid), ''));
+          copyText(inviteText(m, mem.name, memberLink(id, mid, mem.code), ''));
         } else if (b.dataset.act === 'pw') {
           if (!confirm(`${mem.name} 위원의 비밀번호를 새로 발급할까요? 기존 비밀번호는 더 이상 쓸 수 없습니다.`)) return;
           const res = await busy(b, () => call('reissuePassword', { token: state.adminToken, meetingId: id, memberId: mid }));

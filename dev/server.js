@@ -96,7 +96,10 @@ const gas = {
   console,
 };
 const ctx = vm.createContext(gas);
-vm.runInContext(fs.readFileSync(path.join(SRC, 'Code.gs'), 'utf8') + '\n;globalThis.__api = api; globalThis.__doGet = doGet;', ctx);
+// 짧은 링크는 GitHub Pages 대신 이 서버의 /short/ 가 받습니다.
+const SHORT = `http://localhost:${PORT}/short/`;
+vm.runInContext(fs.readFileSync(path.join(SRC, 'Code.gs'), 'utf8')
+  .replace(/const SHORT_LINK_BASE = '[^']*';/, `const SHORT_LINK_BASE = '${SHORT}';`) + '\n;globalThis.__api = api; globalThis.__doGet = doGet;', ctx);
 
 const SHIM = `<script>
 window.google = { script: { run: (function mk(ok, fail) {
@@ -122,6 +125,13 @@ http.createServer((req, res) => {
     const html = ctx.__doGet({ parameter: Object.fromEntries(url.searchParams) }).getContent();
     res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
     res.end(html.replace('<head>', '<head>' + SHIM));
+    return;
+  }
+  if (url.pathname === '/short/') { // GitHub Pages의 index.html 흉내
+    const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8')
+      .replace(/https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec/g, BASE);
+    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+    res.end(html);
     return;
   }
   if (url.pathname === '/__pdf') { // 마지막으로 드라이브에 저장된 '원본' 파일

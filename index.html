@@ -4,6 +4,17 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>회의록 전자서명</title>
+<script>
+  // 짧은 서명 링크: https://gyo6star8i.github.io/sign/?K7M2QX → 웹 앱으로 이동
+  (function () {
+    var q = location.search.replace(/^\?/, '');
+    var code = /^k=/.test(q) ? q.slice(2) : q;
+    if (/^[A-Za-z0-9]{6}$/.test(code)) {
+      document.documentElement.style.visibility = 'hidden';
+      location.replace('https://script.google.com/macros/s/AKfycbyeRwIVsOflkVV7npgALebFNX4Na-XIJvKYiPY2MNPI-gO_S2IhyhH_aIiQJJh80cw/exec?k=' + code.toUpperCase());
+    }
+  })();
+</script>
 <style>
   body { margin: 0; background: #f4f5f7; color: #1d2330; font: 16px/1.6 "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
     display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 16px; box-sizing: border-box; }
