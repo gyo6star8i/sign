@@ -518,6 +518,18 @@
             <div id="m" class="${message ? 'msg warn' : 'hidden'}">${esc(message || '')}</div>
             <button class="primary" style="width:100%">${setup ? '설정하고 시작하기' : '로그인'}</button>
           </form>
+          ${setup ? '' : `
+          <details style="margin-top:14px">
+            <summary class="muted" style="cursor:pointer">비밀번호를 잊으셨나요?</summary>
+            <ol class="muted" style="padding-left:20px;margin:8px 0 0">
+              <li>이 시스템을 설치한 <b>구글 시트</b>를 열고 <b>확장 프로그램 → Apps Script</b>를 누릅니다.</li>
+              <li>왼쪽 <b>⚙ 프로젝트 설정</b> → 맨 아래 <b>스크립트 속성</b>에서 <b>수정</b>을 누릅니다.</li>
+              <li><code>ADMIN_PW_HASH</code>, <code>ADMIN_PW_SALT</code> 두 줄을 <b>삭제</b>하고 <b>스크립트 속성 저장</b>을 누릅니다.</li>
+              <li>이 페이지를 새로고침하면 새 비밀번호를 만드는 화면이 나옵니다.</li>
+            </ol>
+            <p class="muted" style="margin:6px 0 0">회의록과 서명 기록은 지워지지 않습니다. 다른 속성(SPREADSHEET_ID 등)은 지우지 마세요.
+              시트를 만든 구글 계정으로만 할 수 있습니다.</p>
+          </details>`}
         </div>
       </div>`;
     $('#pw').focus();
