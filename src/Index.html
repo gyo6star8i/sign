@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f4f5f7; --card: #fff; --ink: #1d2330; --muted: #667085; --line: #d9dde5;
+    --accent: #2f5bd3; --accent-ink: #fff; --ok: #1f8a4c; --ok-bg: #e7f6ed; --warn: #b54708; --warn-bg: #fef3e2;
+    --danger: #c0352b; --danger-bg: #fdecea;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+    font: 15px/1.6 'Noto Sans KR', 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 60px; }
+  .narrow { max-width: 440px; }
+  header.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+  header.top h1 { font-size: 20px; margin: 0; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 20px; margin-bottom: 16px; }
+  .card h2 { font-size: 17px; margin: 0 0 12px; }
+  label.f { display: block; margin-bottom: 12px; }
+  label.f > span { display: block; font-size: 13px; font-weight: 500; color: var(--muted); margin-bottom: 4px; }
+  input[type=text], input[type=password], textarea, select {
+    width: 100%; padding: 9px 11px; border: 1px solid var(--line); border-radius: 7px; font: inherit; background: #fff; color: inherit; }
+  textarea { resize: vertical; min-height: 90px; }
+  input:focus, textarea:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: var(--accent); }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
+  @media (max-width: 640px) { .grid2 { grid-template-columns: 1fr; } }
+  button, .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 9px 16px;
+    border-radius: 7px; border: 1px solid var(--line); background: #fff; color: var(--ink); font: inherit; font-weight: 500;
+    cursor: pointer; text-decoration: none; white-space: nowrap; }
+  button:hover { background: #f0f2f6; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  button.primary:hover { filter: brightness(1.08); }
+  button.danger { color: var(--danger); }
+  button.small { padding: 4px 10px; font-size: 13px; }
+  button:disabled { opacity: .5; cursor: default; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .row.end { justify-content: flex-end; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .msg { padding: 10px 12px; border-radius: 7px; margin: 10px 0; font-size: 14px; }
+  .msg.err { background: var(--danger-bg); color: var(--danger); }
+  .msg.ok { background: var(--ok-bg); color: var(--ok); }
+  .msg.warn { background: var(--warn-bg); color: var(--warn); }
+  .badge { display: inline-block; padding: 1px 8px; border-radius: 99px; font-size: 12px; font-weight: 500; }
+  .badge.ok { background: var(--ok-bg); color: var(--ok); }
+  .badge.wait { background: #eef0f4; color: var(--muted); }
+  .badge.warn { background: var(--warn-bg); color: var(--warn); }
+  .badge.danger { background: var(--danger-bg); color: var(--danger); }
+  table.list { width: 100%; border-collapse: collapse; }
+  table.list th, table.list td { text-align: left; padding: 9px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  table.list th { font-size: 13px; color: var(--muted); font-weight: 500; }
+  table.list tr.click { cursor: pointer; }
+  table.list tr.click:hover td { background: #f7f8fb; }
+  .table-scroll { overflow-x: auto; }
+  .members-edit td { padding: 4px; }
+  .members-edit input { padding: 6px 8px; }
+  .progress { height: 6px; background: #eef0f4; border-radius: 99px; overflow: hidden; width: 90px; display: inline-block; vertical-align: middle; }
+  .progress > i { display: block; height: 100%; background: var(--ok); }
+  .hidden { display: none !important; }
+  .modal-back { position: fixed; inset: 0; background: rgba(15, 20, 30, .45); display: flex; align-items: flex-start;
+    justify-content: center; padding: 40px 16px; overflow-y: auto; z-index: 50; }
+  .modal { background: #fff; border-radius: 10px; padding: 20px; width: 100%; max-width: 620px; }
+  .modal h2 { margin: 0 0 8px; font-size: 18px; }
+  pre.copy { background: #f6f7f9; border: 1px solid var(--line); border-radius: 7px; padding: 10px 12px; white-space: pre-wrap;
+    word-break: break-all; font: 13px/1.6 'Noto Sans KR', sans-serif; margin: 6px 0 12px; }
+  .pw { font: 700 18px/1 ui-monospace, Menlo, Consolas, monospace; letter-spacing: 2px; }
+  .sigpad-wrap { border: 2px dashed var(--line); border-radius: 10px; background: #fff; position: relative; touch-action: none; }
+  .sigpad-wrap canvas { display: block; width: 100%; height: 190px; cursor: crosshair; }
+  .sigpad-hint { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #b3b9c6;
+    pointer-events: none; font-size: 15px; }
+  .check { display: flex; gap: 8px; align-items: flex-start; margin: 14px 0; font-weight: 500; }
+  .check input { width: 20px; height: 20px; margin-top: 2px; }
+  .doc-frame { background: #e9ebef; padding: 20px; border-radius: 10px; overflow-x: auto; margin-bottom: 16px; }
+  .doc-frame .doc { margin: 0 auto; box-shadow: 0 2px 10px rgba(0,0,0,.12); }
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: #1d2330; color: #fff;
+    padding: 10px 18px; border-radius: 8px; z-index: 99; font-size: 14px; }
+  .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid currentColor; border-right-color: transparent;
+    border-radius: 50%; animation: spin .7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading { padding: 60px 0; text-align: center; color: var(--muted); }
+</style>
+
+<!-- 회의록 양식 스타일 (화면 미리보기·인쇄·PDF 저장에 함께 쓰입니다) -->
+<style id="doc-css">
+  .doc { width: 210mm; min-height: 297mm; padding: 20mm 18mm; background: #fff; color: #000;
+    font-family: 'Noto Sans KR', 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; font-size: 10.5pt; line-height: 1.6; }
+  .doc + .doc { margin-top: 20px; }
+  .doc h1 { text-align: center; font-size: 17pt; font-weight: 700; margin: 6mm 0 6mm; letter-spacing: -0.3px; }
+  .doc table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  .doc td, .doc th { border: 1px solid #000; padding: 5px 8px; font-weight: 400; }
+  .doc .info th { width: 18%; text-align: center; letter-spacing: 6px; }
+  .doc .info td { text-align: center; }
+  .doc .info .agenda td, .doc .info .agenda th { padding-top: 12px; padding-bottom: 12px; }
+  .doc .info .result-head td { text-align: center; letter-spacing: 1px; }
+  .doc .info .result td { text-align: left; white-space: pre-wrap; padding: 10px 10px 14px; min-height: 60mm; height: 70mm; vertical-align: top; }
+  .doc .confirm { text-align: center; margin: 7mm 0 3mm; font-size: 11pt; }
+  .doc .date { text-align: center; font-size: 17pt; margin: 0 0 5mm; letter-spacing: 1px; }
+  .doc .school { text-align: center; font-size: 19pt; margin: 0 0 5mm; letter-spacing: 0.5px; }
+  .doc .sign th { width: 13%; font-weight: 400; text-align: center; }
+  .doc .sign td { text-align: center; padding: 4px 2px; word-break: keep-all; }
+  .doc .sign tr.r-role td, .doc .sign tr.r-role th { height: 11mm; border-bottom: 3px double #000; }
+  .doc .sign tr.r-pos td, .doc .sign tr.r-pos th { height: 16mm; }
+  .doc .sign tr.r-name td, .doc .sign tr.r-name th { height: 16mm; }
+  .doc .sign tr.r-sig td, .doc .sign tr.r-sig th { height: 16mm; }
+  .doc .sign img { max-width: 100%; max-height: 14mm; display: block; margin: 0 auto; }
+  .doc .sign .pending { color: #999; font-size: 8pt; }
+  .doc .sign .done-mark { color: #1f8a4c; font-size: 8.5pt; }
+  .doc .foot { margin-top: 6mm; font-size: 8pt; color: #555; text-align: right; }
+  .doc.audit h1 { font-size: 14pt; }
+  .doc.audit td, .doc.audit th { font-size: 9pt; text-align: center; }
+  .doc.audit .hash { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 8pt; word-break: break-all; }
+  @page { size: A4; margin: 0; }
+  @media print {
+    html, body { background: #fff !important; margin: 0 !important; }
+    .doc { box-shadow: none !important; margin: 0 !important; page-break-after: always; break-after: page; }
+    .doc:last-child { page-break-after: auto; break-after: auto; }
+  }
+</style>
+<style>
+  @media print {
+    body > *:not(#print-area) { display: none !important; }
+    #print-area { display: block !important; }
+  }
+  #print-area { display: none; }
+</style>
+</head>
+<body>
+<div id="app"><div class="loading"><span class="spinner"></span> 불러오는 중…</div></div>
+<div id="print-area"></div>
+
+<script>
+  // 브라우저 저장소(관리자 로그인 유지용). 막혀 있어도 동작하도록 메모리로 대체합니다.
+  var store = (function () {
+    var mem = {};
+    return {
+      get: function (k) { try { return sessionStorage.getItem(k); } catch (e) { return mem[k] || null; } },
+      set: function (k, v) { try { sessionStorage.setItem(k, v); } catch (e) { mem[k] = v; } },
+      del: function (k) { try { sessionStorage.removeItem(k); } catch (e) { delete mem[k]; } },
+    };
+  })();
+</script>
+<script>
+  const BOOT = <?!= boot ?>;
+</script>
+<script>
+(function () {
+  'use strict';
+
+  const app = document.getElementById('app');
+  const P = BOOT.params || {};
+  const state = { adminToken: store.get('adminToken'), member: null };
+
+  // ───── 공통 도우미 ─────
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+  function $(sel, root) { return (root || document).querySelector(sel); }
+  function $all(sel, root) { return Array.from((root || document).querySelectorAll(sel)); }
+
+  function call(action, payload) {
+    return new Promise((resolve, reject) => {
+      google.script.run
+        .withSuccessHandler((r) => {
+          if (r && r.ok) return resolve(r.data);
+          const e = new Error((r && r.error) || '알 수 없는 오류가 발생했습니다.');
+          e.code = r && r.code;
+          reject(e);
+        })
+        .withFailureHandler((e) => reject(new Error((e && e.message) || String(e))))
+        .api(action, payload || {});
+    });
+  }
+
+  function toast(text) {
+    const t = document.createElement('div');
+    t.className = 'toast';
+    t.textContent = text;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 2200);
+  }
+
+  async function copyText(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch (e) {
+      const ta = document.createElement('textarea');
+      ta.value = text; document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); } catch (e2) { /* 무시 */ }
+      ta.remove();
+    }
+    toast('복사했습니다');
+  }
+
+  function showError(where, err) {
+    const box = typeof where === 'string' ? $(where) : where;
+    if (box) { box.className = 'msg err'; box.textContent = err.message || String(err); }
+  }
+
+  async function busy(btn, fn) {
+    const old = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> ' + old;
+    try { return await fn(); } finally { btn.disabled = false; btn.innerHTML = old; }
+  }
+
+  function todayKo() {
+    const d = new Date();
+    return `${d.getFullYear()}. ${d.getMonth() + 1}. ${d.getDate()}.`;
+  }
+
+  function memberLink(meetingId, memberId) {
+    const base = BOOT.appUrl || location.href.split('?')[0];
+    return `${base}?m=${encodeURIComponent(meetingId)}${memberId ? '&u=' + encodeURIComponent(memberId) : ''}`;
+  }
+
+  function inviteText(meeting, memberName, link, password) {
+    return [
+      `[${meeting.title || '회의록'} 서명 요청]`,
+      `${memberName} 선생님, 아래 링크에 접속해 회의록 내용을 확인하시고 서명해 주세요.`,
+      `링크: ${link}`,
+      password ? `비밀번호: ${password}` : '비밀번호: (따로 전달드린 비밀번호)',
+    ].join('\n');
+  }
+
+  function modal(html, onMount) {
+    const back = document.createElement('div');
+    back.className = 'modal-back';
+    back.innerHTML = `<div class="modal">${html}</div>`;
+    document.body.appendChild(back);
+    const close = () => back.remove();
+    back.addEventListener('click', (e) => { if (e.target === back || e.target.closest('[data-close]')) close(); });
+    if (onMount) onMount(back, close);
+    return close;
+  }
+
+  function handleAuthError(err) {
+    if (err && err.code === 'AUTH') {
+      store.del('adminToken');
+      state.adminToken = null;
+      adminStart(err.message);
+      return true;
+    }
+    return false;
+  }
+
+  // ───── 회의록 양식 렌더링 ─────
+  /**
+   * opts.showSignatures: 서명 이미지 표시 여부(관리자 출력용)
+   * opts.mySignatureId: 위원 화면에서 본인 서명만 보여줄 때 본인 memberId
+   */
+  function renderDoc(m, members, opts) {
+    opts = opts || {};
+    const cols = members.length;
+    const sigCell = (x) => {
+      const showImg = x.signature && (opts.showSignatures || x.memberId === opts.mySignatureId);
+      if (showImg) return `<img src="${esc(x.signature)}" alt="${esc(x.name)} 서명">`;
+      if (opts.markSigned && (x.signed || x.signedAt)) return '<span class="done-mark">서명완료</span>';
+      return opts.showPending ? '<span class="pending">미서명</span>' : '';
+    };
+    const row = (cls, label, cell) =>
+      `<tr class="${cls}"><th>${label}</th>${members.map((x) => `<td>${cell(x)}</td>`).join('')}</tr>`;
+    return `
+      <div class="doc">
+        <h1>- ${esc(m.title)} -</h1>
+        <table class="info">
+          <tr><th>일 시</th><td>${esc(m.datetime)}</td></tr>
+          <tr><th>장 소</th><td>${esc(m.place)}</td></tr>
+          <tr><th>위 원</th><td>${esc(m.committee)}</td></tr>
+          <tr class="agenda"><th>안 건</th><td>${esc(m.agenda)}</td></tr>
+          <tr class="result-head"><td colspan="2">회의 결과</td></tr>
+          <tr class="result"><td colspan="2">${esc(m.result)}</td></tr>
+        </table>
+        <div class="confirm">위 사실을 확인함</div>
+        <div class="date">${esc(m.confirmDate)}</div>
+        <div class="school">${esc(m.school)}</div>
+        <table class="sign">
+          <colgroup><col style="width:${cols > 8 ? 11 : 13}%">${members.map(() => '<col>').join('')}</colgroup>
+          ${row('r-role', '구분', (x) => esc(x.role))}
+          ${row('r-pos', '직위', (x) => esc(x.position))}
+          ${row('r-name', '성명', (x) => esc(x.name))}
+          ${row('r-sig', '확인서명', sigCell)}
+        </table>
+        ${opts.footer ? `<div class="foot">${esc(opts.footer)}</div>` : ''}
+      </div>`;
+  }
+
+  function renderAudit(m, members, docHash) {
+    return `
+      <div class="doc audit">
+        <h1>전자서명 확인 내역</h1>
+        <p style="font-size:9pt;margin:0 0 4mm">문서: ${esc(m.title)} / 확인일 ${esc(m.confirmDate)}<br>
+        문서 확인값(SHA-256): <span class="hash">${esc(docHash)}</span></p>
+        <table>
+          <tr><th style="width:8%">번호</th><th style="width:14%">구분</th><th style="width:14%">직위</th><th style="width:16%">성명</th><th style="width:24%">서명 일시</th><th>서명 당시 문서 확인값</th></tr>
+          ${members.map((x, i) => `<tr><td>${i + 1}</td><td>${esc(x.role)}</td><td>${esc(x.position)}</td><td>${esc(x.name)}</td>
+            <td>${esc(x.signedAt || '미서명')}</td><td class="hash">${esc(x.docHash ? x.docHash.slice(0, 16) + '…' : '-')}${x.docHash && x.docHash !== docHash ? ' (불일치)' : ''}</td></tr>`).join('')}
+        </table>
+        <p style="font-size:8.5pt;color:#555;margin-top:4mm">각 위원은 개별 발급된 비밀번호로 본인 확인 후 회의록 내용을 확인하고 동의·서명하였습니다.
+        서명 당시 문서 확인값이 위 문서 확인값과 같으면, 서명 후 내용이 바뀌지 않았다는 뜻입니다.</p>
+      </div>`;
+  }
+
+  // ───── 첫 화면 분기 ─────
+  function start() {
+    if (P.page === 'admin') return adminStart();
+    if (P.m) return memberStart();
+    app.innerHTML = `
+      <div class="wrap narrow">
+        <div class="card">
+          <h2>회의록 전자서명</h2>
+          <p class="muted">위원님은 담당자에게 받은 서명 링크로 접속해 주세요.</p>
+          <a class="btn" href="${esc((BOOT.appUrl || '') + '?page=admin')}">관리자 페이지</a>
+        </div>
+      </div>`;
+  }
+
+  // ═════════════ 관리자 ═════════════
+  async function adminStart(message) {
+    if (state.adminToken) return adminList();
+    app.innerHTML = '<div class="loading"><span class="spinner"></span></div>';
+    let status;
+    try { status = await call('adminStatus'); } catch (e) {
+      app.innerHTML = `<div class="wrap narrow"><div class="msg err">${esc(e.message)}</div></div>`;
+      return;
+    }
+    const setup = !status.hasPassword;
+    app.innerHTML = `
+      <div class="wrap narrow">
+        <div class="card">
+          <h2>${setup ? '관리자 비밀번호 만들기' : '관리자 로그인'}</h2>
+          ${setup ? '<p class="muted">처음 사용하시네요. 관리자 페이지에 들어올 때 쓸 비밀번호를 정해 주세요(6자 이상).</p>' : ''}
+          <form id="f">
+            <label class="f"><span>비밀번호</span><input type="password" id="pw" autocomplete="${setup ? 'new-password' : 'current-password'}" required></label>
+            ${setup ? '<label class="f"><span>비밀번호 확인</span><input type="password" id="pw2" autocomplete="new-password" required></label>' : ''}
+            <div id="m" class="${message ? 'msg warn' : 'hidden'}">${esc(message || '')}</div>
+            <button class="primary" style="width:100%">${setup ? '설정하고 시작하기' : '로그인'}</button>
+          </form>
+        </div>
+      </div>`;
+    $('#pw').focus();
+    $('#f').addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      const pw = $('#pw').value;
+      if (setup && pw !== $('#pw2').value) return showError('#m', new Error('비밀번호 확인이 일치하지 않습니다.'));
+      try {
+        const r = await busy($('#f button'), () => call(setup ? 'adminSetup' : 'adminLogin', { password: pw }));
+        state.adminToken = r.token;
+        store.set('adminToken', r.token);
+        adminList();
+      } catch (e) { showError('#m', e); }
+    });
+  }
+
+  function adminHeader(title, right) {
+    return `<header class="top"><h1>${esc(title)}</h1><div class="row">${right || ''}
+      <button class="small" id="logout">로그아웃</button></div></header>`;
+  }
+  function bindLogout() {
+    const b = $('#logout');
+    if (b) b.addEventListener('click', () => { store.del('adminToken'); state.adminToken = null; adminStart(); });
+  }
+
+  async function adminList() {
+    app.innerHTML = '<div class="loading"><span class="spinner"></span></div>';
+    let list;
+    try { list = await call('listMeetings', { token: state.adminToken }); } catch (e) {
+      if (!handleAuthError(e)) app.innerHTML = `<div class="wrap"><div class="msg err">${esc(e.message)}</div></div>`;
+      return;
+    }
+    state.meetingList = list;
+    app.innerHTML = `
+      <div class="wrap">
+        ${adminHeader('회의록 전자서명 관리', '<button class="primary" id="new">+ 새 회의록</button>')}
+        <div class="card">
+          ${list.length === 0 ? '<p class="muted">아직 만든 회의록이 없습니다. <b>+ 새 회의록</b>을 눌러 시작하세요.</p>' : `
+          <div class="table-scroll"><table class="list">
+            <tr><th>회의록</th><th>확인 날짜</th><th>서명</th><th>상태</th></tr>
+            ${list.map((x) => `
+              <tr class="click" data-id="${esc(x.id)}">
+                <td><b>${esc(x.title)}</b><div class="muted">${esc(x.datetime)}</div></td>
+                <td>${esc(x.confirmDate)}</td>
+                <td><span class="progress"><i style="width:${x.total ? Math.round(x.signed / x.total * 100) : 0}%"></i></span>
+                  <span class="muted">${x.signed}/${x.total}</span></td>
+                <td>${statusBadge(x)}</td>
+              </tr>`).join('')}
+          </table></div>`}
+        </div>
+      </div>`;
+    bindLogout();
+    $('#new').addEventListener('click', () => adminEdit(null));
+    $all('tr.click').forEach((tr) => tr.addEventListener('click', () => adminDetail(tr.dataset.id)));
+  }
+
+  function statusBadge(x) {
+    if (x.status === 'closed') return '<span class="badge wait">마감</span>';
+    if (x.total && x.signed === x.total) return '<span class="badge ok">서명 완료</span>';
+    return '<span class="badge warn">서명 받는 중</span>';
+  }
+
+  const DEFAULT_MEMBERS = [{ role: '위원장', position: '교감', name: '' }]
+    .concat(Array.from({ length: 7 }, () => ({ role: '위원', position: '교사', name: '' })));
+
+  function defaultMeeting() {
+    const y = new Date().getFullYear();
+    return {
+      title: `${y} 인사자문위원회 회의록`, datetime: '', place: '', committee: '인사자문위원회',
+      agenda: '', result: '1. 사유: \n\n2. 결과: \n  - ', confirmDate: todayKo(), school: `○○초등학교 ${y} 인사자문위원회`,
+    };
+  }
+
+  async function adminEdit(id) {
+    let meeting = defaultMeeting();
+    let members = DEFAULT_MEMBERS.map((x) => Object.assign({}, x));
+    let signedCount = 0;
+    if (id) {
+      app.innerHTML = '<div class="loading"><span class="spinner"></span></div>';
+      try {
+        const r = await call('getMeeting', { token: state.adminToken, id });
+        meeting = r.meeting; members = r.members;
+        signedCount = members.filter((x) => x.signedAt).length;
+      } catch (e) { if (!handleAuthError(e)) alert(e.message); return; }
+    }
+    const others = (state.meetingList || []).filter((x) => x.id !== id);
+    app.innerHTML = `
+      <div class="wrap">
+        ${adminHeader(id ? '회의록 수정' : '새 회의록', '<button class="small" id="back">← 목록</button>')}
+        ${signedCount ? `<div class="msg warn">이미 ${signedCount}명이 서명했습니다. 내용이나 위원 명단을 바꾸면 서명이 모두 초기화되고 다시 받아야 합니다.</div>` : ''}
+        ${!id && others.length ? `
+        <div class="card"><div class="row">
+          <span class="muted">이전 회의록에서 불러오기</span>
+          <select id="copyFrom" style="width:auto;flex:1;min-width:200px"><option value="">선택하세요</option>
+            ${others.map((x) => `<option value="${esc(x.id)}">${esc(x.title)} (${esc(x.confirmDate)})</option>`).join('')}</select>
+          <button class="small" id="copyBtn">불러오기</button>
+        </div><p class="muted" style="margin:6px 0 0">위원 명단과 기본 정보를 가져옵니다. 비밀번호는 새로 발급됩니다.</p></div>` : ''}
+        <form id="f">
+          <div class="card">
+            <h2>회의 정보</h2>
+            <label class="f"><span>회의록 제목</span><input type="text" name="title" required></label>
+            <div class="grid2">
+              <label class="f"><span>일시</span><input type="text" name="datetime" placeholder="예: 2026. 9. 15.(수) 13:40~"></label>
+              <label class="f"><span>장소</span><input type="text" name="place" placeholder="예: 교무회의실"></label>
+            </div>
+            <label class="f"><span>위원</span><input type="text" name="committee"></label>
+            <label class="f"><span>안건</span><textarea name="agenda" rows="2" style="min-height:60px"></textarea></label>
+            <label class="f"><span>회의 결과</span><textarea name="result" rows="12" style="min-height:240px"></textarea></label>
+            <div class="grid2">
+              <label class="f"><span>확인 날짜 ("위 사실을 확인함" 아래)</span><input type="text" name="confirmDate" placeholder="예: 2026. 10. 10."></label>
+              <label class="f"><span>학교·위원회 이름 (날짜 아래 큰 글씨)</span><input type="text" name="school" placeholder="예: ○○초등학교 2026 인사자문위원회"></label>
+            </div>
+          </div>
+          <div class="card">
+            <h2>위원 명단</h2>
+            <p class="muted" style="margin-top:-6px">서명표에 왼쪽부터 이 순서대로 들어갑니다. 저장하면 새로 추가된 위원마다 접속 비밀번호(6자리)가 발급됩니다.</p>
+            <div class="table-scroll"><table class="list members-edit">
+              <thead><tr><th style="width:40px">#</th><th>구분</th><th>직위</th><th>성명</th><th style="width:110px"></th></tr></thead>
+              <tbody id="mrows"></tbody>
+            </table></div>
+            <button type="button" class="small" id="addRow" style="margin-top:8px">+ 위원 추가</button>
+          </div>
+          <div id="m" class="hidden"></div>
+          <div class="row end">
+            <button type="button" id="preview">미리보기</button>
+            <button class="primary" id="save">저장</button>
+          </div>
+        </form>
+      </div>`;
+    bindLogout();
+    $('#back').addEventListener('click', () => (id ? adminDetail(id) : adminList()));
+
+    const form = $('#f');
+    const fill = (m) => ['title', 'datetime', 'place', 'committee', 'agenda', 'result', 'confirmDate', 'school']
+      .forEach((k) => { form.elements[k].value = m[k] || ''; });
+    fill(meeting);
+
+    const tbody = $('#mrows');
+    const addRow = (x) => {
+      const tr = document.createElement('tr');
+      tr.dataset.memberId = x.memberId || '';
+      tr.innerHTML = `
+        <td class="muted idx"></td>
+        <td><input type="text" data-k="role" value="${esc(x.role)}"></td>
+        <td><input type="text" data-k="position" value="${esc(x.position)}"></td>
+        <td><input type="text" data-k="name" value="${esc(x.name)}" placeholder="성명"></td>
+        <td><div class="row" style="flex-wrap:nowrap;gap:2px">
+          <button type="button" class="small" data-act="up" title="위로">↑</button>
+          <button type="button" class="small" data-act="down" title="아래로">↓</button>
+          <button type="button" class="small danger" data-act="del" title="삭제">✕</button></div></td>`;
+      tbody.appendChild(tr);
+      renumber();
+    };
+    const renumber = () => $all('tr', tbody).forEach((tr, i) => { $('.idx', tr).textContent = i + 1; });
+    members.forEach(addRow);
+    $('#addRow').addEventListener('click', () => addRow({ role: '위원', position: '교사', name: '' }));
+    tbody.addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-act]');
+      if (!b) return;
+      const tr = b.closest('tr');
+      if (b.dataset.act === 'del') tr.remove();
+      if (b.dataset.act === 'up' && tr.previousElementSibling) tbody.insertBefore(tr, tr.previousElementSibling);
+      if (b.dataset.act === 'down' && tr.nextElementSibling) tbody.insertBefore(tr.nextElementSibling, tr);
+      renumber();
+    });
+
+    const copyBtn = $('#copyBtn');
+    if (copyBtn) copyBtn.addEventListener('click', async () => {
+      const src = $('#copyFrom').value;
+      if (!src) return;
+      try {
+        const r = await busy(copyBtn, () => call('getMeeting', { token: state.adminToken, id: src }));
+        fill(Object.assign({}, r.meeting, { confirmDate: todayKo() }));
+        tbody.innerHTML = '';
+        r.members.forEach((x) => addRow({ role: x.role, position: x.position, name: x.name }));
+        toast('불러왔습니다');
+      } catch (e) { if (!handleAuthError(e)) showError('#m', e); }
+    });
+
+    const collect = () => ({
+      meeting: Object.assign({ id: id || '' }, Object.fromEntries(
+        ['title', 'datetime', 'place', 'committee', 'agenda', 'result', 'confirmDate', 'school'].map((k) => [k, form.elements[k].value]))),
+      members: $all('tr', tbody).map((tr) => ({
+        memberId: tr.dataset.memberId,
+        role: $('[data-k=role]', tr).value, position: $('[data-k=position]', tr).value, name: $('[data-k=name]', tr).value,
+      })),
+    });
+
+    $('#preview').addEventListener('click', () => {
+      const d = collect();
+      modal(`<h2>미리보기</h2><div class="doc-frame">${renderDoc(d.meeting, d.members.filter((x) => x.name || x.role))}</div>
+        <div class="row end"><button data-close>닫기</button></div>`, (back) => {
+        back.querySelector('.modal').style.maxWidth = '900px';
+      });
+    });
+
+    form.addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      const d = collect();
+      const send = (confirmReset) => call('saveMeeting', Object.assign({ token: state.adminToken, confirmReset }, d));
+      try {
+        let r;
+        try {
+          r = await busy($('#save'), () => send(false));
+        } catch (e) {
+          if (e.code !== 'SIGNED_EXISTS') throw e;
+          if (!confirm(e.message + '\n그래도 저장할까요?')) return;
+          r = await busy($('#save'), () => send(true));
+        }
+        await adminDetail(r.id);
+        if (r.issued.length) showIssued(r.id, r.issued);
+        else toast(r.signaturesReset ? '저장했습니다. 서명이 초기화되었습니다.' : '저장했습니다');
+      } catch (e) { if (!handleAuthError(e)) showError('#m', e); }
+    });
+  }
+
+  /** 발급된 비밀번호 안내 (이 창을 닫으면 다시 볼 수 없음) */
+  function showIssued(meetingId, issued) {
+    const meeting = state.current ? state.current.meeting : { title: '회의록' };
+    const texts = issued.map((x) => inviteText(meeting, x.name, memberLink(meetingId, x.memberId), x.password));
+    modal(`
+      <h2>위원 접속 비밀번호</h2>
+      <div class="msg warn">비밀번호는 보안을 위해 지금만 보입니다. 창을 닫기 전에 각 위원께 전달하거나 복사해 두세요.
+        잊어버리면 위원별 <b>비밀번호 재발급</b>으로 새로 만들 수 있습니다.</div>
+      ${issued.map((x, i) => `
+        <div style="margin-top:12px"><div class="row" style="justify-content:space-between">
+          <b>${esc(x.name)}</b> <span class="pw">${esc(x.password)}</span>
+          <button class="small" data-copy="${i}">안내문 복사</button></div>
+          <pre class="copy">${esc(texts[i])}</pre></div>`).join('')}
+      <div class="row end"><button id="copyAll">전체 복사</button><button class="primary" data-close>확인했습니다</button></div>`,
+    (back) => {
+      $all('[data-copy]', back).forEach((b) => b.addEventListener('click', () => copyText(texts[Number(b.dataset.copy)])));
+      $('#copyAll', back).addEventListener('click', () => copyText(texts.join('\n\n')));
+    });
+  }
+
+  async function adminDetail(id) {
+    app.innerHTML = '<div class="loading"><span class="spinner"></span></div>';
+    let r;
+    try { r = await call('getMeeting', { token: state.adminToken, id }); } catch (e) {
+      if (!handleAuthError(e)) app.innerHTML = `<div class="wrap"><div class="msg err">${esc(e.message)}</div></div>`;
+      return;
+    }
+    state.current = r;
+    const m = r.meeting;
+    const total = r.members.length;
+    const signed = r.members.filter((x) => x.signedAt).length;
+    const closed = m.status === 'closed';
+    app.innerHTML = `
+      <div class="wrap">
+        ${adminHeader(m.title, '<button class="small" id="back">← 목록</button>')}
+        <div class="card">
+          <div class="row" style="justify-content:space-between">
+            <div><b>서명 현황</b> <span class="muted">${signed}/${total}명</span> ${statusBadge({ status: m.status, total, signed })}</div>
+            <div class="row">
+              <button class="primary" id="print">PDF 출력</button>
+              <button id="edit">내용 수정</button>
+              <button id="toggle">${closed ? '서명 다시 열기' : '서명 마감'}</button>
+              <button class="danger" id="del">삭제</button>
+            </div>
+          </div>
+          ${signed === total && total ? '<div class="msg ok">모든 위원이 서명했습니다. <b>PDF 출력</b>으로 회의록을 저장하세요.</div>' : ''}
+          ${closed ? '<div class="msg warn">마감된 회의록입니다. 위원이 더 이상 서명할 수 없습니다.</div>' : ''}
+          <div class="table-scroll"><table class="list" style="margin-top:8px">
+            <tr><th>#</th><th>구분</th><th>직위</th><th>성명</th><th>상태</th><th></th></tr>
+            ${r.members.map((x, i) => `
+              <tr data-mid="${esc(x.memberId)}">
+                <td class="muted">${i + 1}</td><td>${esc(x.role)}</td><td>${esc(x.position)}</td><td><b>${esc(x.name)}</b></td>
+                <td>${x.signedAt ? `<span class="badge ok">서명완료</span> <span class="muted">${esc(x.signedAt.slice(5, 16))}</span>`
+                  : x.locked ? '<span class="badge danger">잠김</span>' : '<span class="badge wait">대기</span>'}</td>
+                <td><div class="row" style="justify-content:flex-end">
+                  ${x.signedAt ? '<button class="small danger" data-act="reset">서명 취소</button>'
+                    : '<button class="small" data-act="link">링크 복사</button>'}
+                  <button class="small" data-act="pw">비밀번호 재발급</button></div></td>
+              </tr>`).join('')}
+          </table></div>
+          <p class="muted" style="margin-bottom:0">위원 전용 링크(비밀번호 제외): 각 위원의 <b>링크 복사</b>를 누르세요. 비밀번호를 잊은 위원은 <b>비밀번호 재발급</b>으로 새 비밀번호를 전달하세요.</p>
+        </div>
+        <div class="doc-frame">${renderDoc(m, r.members, { showSignatures: true, showPending: true })}</div>
+      </div>`;
+    bindLogout();
+    $('#back').addEventListener('click', adminList);
+    $('#edit').addEventListener('click', () => adminEdit(id));
+    $('#print').addEventListener('click', () => adminPrint(r));
+    $('#toggle').addEventListener('click', async (e) => {
+      try {
+        await busy(e.currentTarget, () => call('setMeetingStatus', { token: state.adminToken, id, status: closed ? 'open' : 'closed' }));
+        adminDetail(id);
+      } catch (err) { if (!handleAuthError(err)) alert(err.message); }
+    });
+    $('#del').addEventListener('click', async (e) => {
+      if (!confirm(`'${m.title}' 회의록과 모든 서명을 삭제합니다. 되돌릴 수 없습니다. 삭제할까요?`)) return;
+      try { await busy(e.currentTarget, () => call('deleteMeeting', { token: state.adminToken, id })); adminList(); }
+      catch (err) { if (!handleAuthError(err)) alert(err.message); }
+    });
+    $all('tr[data-mid] button').forEach((b) => b.addEventListener('click', async () => {
+      const mid = b.closest('tr').dataset.mid;
+      const mem = r.members.find((x) => x.memberId === mid);
+      try {
+        if (b.dataset.act === 'link') {
+          copyText(inviteText(m, mem.name, memberLink(id, mid), ''));
+        } else if (b.dataset.act === 'pw') {
+          if (!confirm(`${mem.name} 위원의 비밀번호를 새로 발급할까요? 기존 비밀번호는 더 이상 쓸 수 없습니다.`)) return;
+          const res = await busy(b, () => call('reissuePassword', { token: state.adminToken, meetingId: id, memberId: mid }));
+          await adminDetail(id);
+          showIssued(id, [res]);
+        } else if (b.dataset.act === 'reset') {
+          if (!confirm(`${mem.name} 위원의 서명을 취소할까요? 다시 서명을 받아야 합니다.`)) return;
+          await busy(b, () => call('resetSignature', { token: state.adminToken, meetingId: id, memberId: mid }));
+          adminDetail(id);
+        }
+      } catch (err) { if (!handleAuthError(err)) alert(err.message); }
+    }));
+  }
+
+  function buildPrintHtml(r, withAudit) {
+    const docs = renderDoc(r.meeting, r.members, { showSignatures: true })
+      + (withAudit ? renderAudit(r.meeting, r.members, r.docHash) : '');
+    return docs;
+  }
+
+  function adminPrint(r) {
+    const total = r.members.length;
+    const signed = r.members.filter((x) => x.signedAt).length;
+    modal(`
+      <h2>PDF 출력</h2>
+      ${signed < total ? `<div class="msg warn">아직 ${total - signed}명이 서명하지 않았습니다. 빈칸으로 출력됩니다.</div>` : ''}
+      <label class="check"><input type="checkbox" id="audit" checked> 전자서명 확인 내역(서명 일시·문서 확인값) 페이지 포함</label>
+      <p class="muted">• <b>인쇄 / PDF로 저장</b>: 인쇄 창에서 대상(프린터)을 <b>'PDF로 저장'</b>으로 고르면 PDF 파일이 됩니다. 양식이 가장 정확하게 나옵니다.<br>
+      • <b>구글 드라이브에 저장</b>: 드라이브의 '회의록 전자서명 PDF' 폴더에 PDF를 바로 저장합니다.</p>
+      <div id="pm" class="hidden"></div>
+      <div class="row end">
+        <button data-close>닫기</button>
+        <button id="drive">구글 드라이브에 저장</button>
+        <button class="primary" id="doPrint">인쇄 / PDF로 저장</button>
+      </div>`, (back, close) => {
+      $('#doPrint', back).addEventListener('click', () => {
+        const area = $('#print-area');
+        area.innerHTML = buildPrintHtml(r, $('#audit', back).checked);
+        close();
+        const imgs = $all('img', area);
+        Promise.all(imgs.map((img) => img.complete ? 0 : new Promise((ok) => { img.onload = img.onerror = ok; })))
+          .then(() => (document.fonts ? document.fonts.ready : 0))
+          .then(() => setTimeout(() => window.print(), 50));
+      });
+      $('#drive', back).addEventListener('click', async (e) => {
+        const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${$('#doc-css').textContent}
+          body{margin:0} .doc{box-shadow:none} .doc + .doc{margin-top:0; page-break-before:always}</style></head>
+          <body>${buildPrintHtml(r, $('#audit', back).checked)}</body></html>`;
+        try {
+          const res = await busy(e.currentTarget, () => call('savePdf', { token: state.adminToken, meetingId: r.meeting.id, html }));
+          const pm = $('#pm', back);
+          pm.className = 'msg ok';
+          pm.innerHTML = `저장했습니다: <a href="${esc(res.url)}" target="_blank" rel="noopener">${esc(res.name)}</a>`;
+        } catch (err) { if (!handleAuthError(err)) showError($('#pm', back), err); }
+      });
+    });
+  }
+
+  // ═════════════ 위원 ═════════════
+  async function memberStart() {
+    app.innerHTML = '<div class="loading"><span class="spinner"></span></div>';
+    let pub;
+    try { pub = await call('getPublicMeeting', { meetingId: P.m }); } catch (e) {
+      app.innerHTML = `<div class="wrap narrow"><div class="msg err">${esc(e.message)}</div></div>`;
+      return;
+    }
+    const fixed = P.u && pub.members.find((x) => x.memberId === P.u);
+    app.innerHTML = `
+      <div class="wrap narrow">
+        <div class="card">
+          <p class="muted" style="margin:0">${esc(pub.school)}</p>
+          <h2 style="margin-top:4px">${esc(pub.title)}</h2>
+          ${pub.status === 'closed' ? '<div class="msg warn">서명이 마감된 회의록입니다.</div>' : ''}
+          <form id="f">
+            ${fixed ? `<p>안녕하세요, <b>${esc(fixed.name)}</b> 위원님.</p>` : `
+            <label class="f"><span>성명</span><select id="who" required><option value="">본인 성명을 선택하세요</option>
+              ${pub.members.map((x) => `<option value="${esc(x.memberId)}">${esc(x.name)} (${esc(x.role)})</option>`).join('')}</select></label>`}
+            <label class="f"><span>비밀번호 (담당자에게 받은 6자리)</span>
+              <input type="password" id="pw" inputmode="numeric" autocomplete="one-time-code" required></label>
+            <div id="m" class="hidden"></div>
+            <button class="primary" style="width:100%">회의록 확인하기</button>
+          </form>
+        </div>
+      </div>`;
+    (fixed ? $('#pw') : $('#who')).focus();
+    $('#f').addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      const memberId = fixed ? fixed.memberId : $('#who').value;
+      try {
+        const r = await busy($('#f button'), () => call('memberLogin', { meetingId: P.m, memberId, password: $('#pw').value }));
+        state.member = r;
+        memberView();
+      } catch (e) { showError('#m', e); }
+    });
+  }
+
+  function memberView() {
+    const r = state.member;
+    const m = r.meeting;
+    const done = !!r.me.signedAt;
+    const closed = m.status === 'closed';
+    const membersForDoc = r.members.map((x) => x.memberId === r.me.memberId ? Object.assign({}, x, { signature: r.me.signature }) : x);
+    app.innerHTML = `
+      <div class="wrap">
+        <header class="top"><h1>${esc(m.title)}</h1><span class="muted">${esc(r.me.name)} 위원</span></header>
+        ${done ? `<div class="msg ok">서명을 마쳤습니다 (${esc(r.me.signedAt)}). 감사합니다. 이 창은 닫으셔도 됩니다.</div>`
+          : '<div class="msg warn">아래 회의록 내용을 확인하신 뒤, 맨 아래에서 서명하고 <b>동의</b>를 눌러 주세요.</div>'}
+        <div class="row end" style="margin-bottom:6px"><button type="button" class="small" id="zoom">${state.zoom ? '화면에 맞추기' : '크게 보기'}</button></div>
+        <div class="doc-frame" id="docFrame">${renderDoc(m, membersForDoc, { mySignatureId: r.me.memberId, markSigned: true })}</div>
+        ${done || closed ? (closed && !done ? '<div class="msg warn">서명이 마감되었습니다.</div>' : '') : `
+        <div class="card" id="signCard">
+          <h2>확인 서명</h2>
+          <p class="muted" style="margin-top:-6px">아래 칸에 손가락이나 마우스로 서명하세요. 서명이 어려우면 <b>이름으로 서명</b>을 누르세요.</p>
+          <div class="sigpad-wrap"><canvas id="pad"></canvas><div class="sigpad-hint" id="hint">여기에 서명하세요</div></div>
+          <div class="row" style="margin-top:8px">
+            <button type="button" class="small" id="clear">지우기</button>
+            <button type="button" class="small" id="auto">이름으로 서명</button>
+          </div>
+          <label class="check"><input type="checkbox" id="agree">
+            <span>위 회의록의 내용을 확인하였으며, 이에 동의하고 서명합니다.</span></label>
+          <div id="m" class="hidden"></div>
+          <button class="primary" id="sign" style="width:100%;padding:13px">동의하고 서명하기</button>
+        </div>`}
+      </div>`;
+    fitDoc();
+    window.addEventListener('resize', fitDoc);
+    $('#zoom').addEventListener('click', (e) => {
+      state.zoom = !state.zoom;
+      e.currentTarget.textContent = state.zoom ? '화면에 맞추기' : '크게 보기';
+      fitDoc();
+    });
+    if (done || closed) return;
+
+    const pad = createPad($('#pad'), () => $('#hint').classList.add('hidden'));
+    $('#clear').addEventListener('click', () => { pad.clear(); $('#hint').classList.remove('hidden'); });
+    $('#auto').addEventListener('click', async () => { await pad.drawName(r.me.name); $('#hint').classList.add('hidden'); });
+    $('#sign').addEventListener('click', async (e) => {
+      if (pad.isEmpty()) return showError('#m', new Error('서명 칸에 서명해 주세요.'));
+      if (!$('#agree').checked) return showError('#m', new Error('내용 확인 및 동의에 체크해 주세요.'));
+      const signature = pad.export();
+      try {
+        const res = await busy(e.currentTarget, () => call('memberSign', { token: r.token, signature, docHash: r.docHash }));
+        state.member = Object.assign({ token: r.token }, res);
+        memberView();
+        window.scrollTo(0, 0);
+      } catch (err) {
+        if (err.code === 'AUTH') { alert(err.message); memberStart(); return; }
+        showError('#m', err);
+      }
+    });
+  }
+
+  /** 휴대폰 화면에서 A4 회의록이 화면 폭에 맞게 보이도록 축소 */
+  function fitDoc() {
+    const frame = $('#docFrame');
+    if (!frame) return;
+    const doc = $('.doc', frame);
+    doc.style.transform = '';
+    doc.style.transformOrigin = 'top left';
+    frame.style.height = '';
+    frame.style.overflow = '';
+    if (state.zoom) { doc.style.margin = ''; frame.style.overflowX = 'auto'; return; }
+    const avail = frame.clientWidth - 40;
+    const w = doc.offsetWidth;
+    if (w > avail) {
+      const s = avail / w;
+      doc.style.transform = `scale(${s})`;
+      doc.style.margin = '0';
+      frame.style.height = (doc.offsetHeight * s + 40) + 'px';
+      frame.style.overflow = 'hidden';
+    }
+  }
+
+  // ───── 서명 패드 ─────
+  function createPad(canvas, onDraw) {
+    const ctx = canvas.getContext('2d');
+    let empty = true;
+    let drawing = false;
+    let last = null;
+    let ratio = 1;
+
+    function resize() {
+      ratio = Math.max(window.devicePixelRatio || 1, 1);
+      const rect = canvas.getBoundingClientRect();
+      const keep = empty ? null : canvas.toDataURL();
+      canvas.width = rect.width * ratio;
+      canvas.height = rect.height * ratio;
+      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+      ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#111';
+      if (keep) {
+        const img = new Image();
+        img.onload = () => { ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(img, 0, 0, canvas.width, canvas.height); ctx.restore(); };
+        img.src = keep;
+      }
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    const pos = (e) => { const r = canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+    canvas.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* 일부 브라우저 미지원 */ }
+      drawing = true; last = pos(e);
+      ctx.beginPath(); ctx.arc(last.x, last.y, 1.4, 0, Math.PI * 2); ctx.fillStyle = '#111'; ctx.fill();
+      if (empty) { empty = false; onDraw && onDraw(); }
+    });
+    canvas.addEventListener('pointermove', (e) => {
+      if (!drawing) return;
+      e.preventDefault();
+      const p = pos(e);
+      const w = e.pressure && e.pointerType === 'pen' ? 1.5 + e.pressure * 2.5 : 2.6;
+      ctx.lineWidth = w;
+      ctx.beginPath(); ctx.moveTo(last.x, last.y); ctx.lineTo(p.x, p.y); ctx.stroke();
+      last = p;
+    });
+    const end = () => { drawing = false; };
+    canvas.addEventListener('pointerup', end);
+    canvas.addEventListener('pointercancel', end);
+
+    return {
+      isEmpty: () => empty,
+      clear() { ctx.clearRect(0, 0, canvas.width, canvas.height); empty = true; },
+      async drawName(name) {
+        const font = '"Nanum Pen Script", cursive';
+        try { if (document.fonts) await document.fonts.load(`64px ${font}`, name); } catch (e) { /* 기본 글꼴 사용 */ }
+        this.clear();
+        const w = canvas.width / ratio; const h = canvas.height / ratio;
+        let size = Math.min(h * 0.62, 96);
+        ctx.font = `${size}px ${font}`;
+        while (ctx.measureText(name).width > w * 0.8 && size > 20) { size -= 4; ctx.font = `${size}px ${font}`; }
+        ctx.fillStyle = '#111'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(name, w / 2, h / 2);
+        empty = false;
+      },
+      /** 서명 부분만 잘라 작은 PNG로 내보냅니다(시트 한 칸에 들어가는 크기). */
+      export() {
+        const { width, height } = canvas;
+        const data = ctx.getImageData(0, 0, width, height).data;
+        let minX = width, minY = height, maxX = -1, maxY = -1;
+        for (let y = 0; y < height; y++) {
+          for (let x = 0; x < width; x++) {
+            if (data[(y * width + x) * 4 + 3] > 10) {
+              if (x < minX) minX = x; if (x > maxX) maxX = x; if (y < minY) minY = y; if (y > maxY) maxY = y;
+            }
+          }
+        }
+        if (maxX < 0) return '';
+        const pad = 6 * ratio;
+        minX = Math.max(0, minX - pad); minY = Math.max(0, minY - pad);
+        maxX = Math.min(width - 1, maxX + pad); maxY = Math.min(height - 1, maxY + pad);
+        const sw = maxX - minX + 1; const sh = maxY - minY + 1;
+        let scale = Math.min(1, 360 / sw, 140 / sh);
+        let out = '';
+        for (let i = 0; i < 5; i++) {
+          const c = document.createElement('canvas');
+          c.width = Math.max(1, Math.round(sw * scale)); c.height = Math.max(1, Math.round(sh * scale));
+          const cx = c.getContext('2d');
+          cx.drawImage(canvas, minX, minY, sw, sh, 0, 0, c.width, c.height);
+          out = c.toDataURL('image/png');
+          if (out.length < 40000) break;
+          scale *= 0.75;
+        }
+        return out;
+      },
+    };
+  }
+
+  start();
+})();
+</script>
+</body>
+</html>
