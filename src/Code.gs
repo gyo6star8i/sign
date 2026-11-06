@@ -23,6 +23,10 @@ const SHEETS = {
     name: 'Log',
     headers: ['time', 'meetingId', 'memberId', 'action', 'detail'],
   },
+  PDFS: {
+    name: 'Pdfs',
+    headers: ['meetingId', 'fileId', 'name', 'sha256', 'docHash', 'createdAt'],
+  },
 };
 
 const MEETING_FIELDS = ['title', 'datetime', 'place', 'committee', 'agenda', 'result', 'confirmDate', 'school'];
@@ -69,6 +73,7 @@ const ACTIONS = {
   reissuePassword,
   resetSignature,
   savePdf,
+  verifyPdf,
   // 위원
   getPublicMeeting,
   memberLogin,
@@ -136,7 +141,9 @@ function getMeeting(p) {
   }));
   const logs = readAll(SHEETS.LOG).filter((l) => l.meetingId === p.id)
     .map((l) => ({ time: l.time, memberId: l.memberId, action: l.action, detail: l.detail }));
-  return { meeting: publicMeeting(meeting), members, logs, docHash: docHash(meeting, members) };
+  const pdfs = readAll(SHEETS.PDFS).filter((x) => x.meetingId === p.id)
+    .map((x) => ({ name: x.name, sha256: x.sha256, createdAt: x.createdAt, url: 'https://drive.google.com/file/d/' + x.fileId + '/view' }));
+  return { meeting: publicMeeting(meeting), members, logs, pdfs, docHash: docHash(meeting, members) };
 }
 
 /**
@@ -165,6 +172,9 @@ function saveMeeting(p) {
       meeting = { id: newId(), status: 'open', createdAt: now };
     } else {
       meeting = findMeeting(input.id);
+      if (meeting.status === 'closed') {
+        throw new Error('마감된 회의록은 수정할 수 없습니다. 먼저 [서명 다시 열기]를 눌러 주세요.');
+      }
     }
     const before = isNew ? null : docHash(meeting, membersOf(meeting.id));
     MEETING_FIELDS.forEach((f) => { meeting[f] = cleanMultiline(input[f]); });
@@ -175,6 +185,7 @@ function saveMeeting(p) {
     existing.forEach((m) => { existingById[m.memberId] = m; });
 
     const issued = [];
+    const pendingLogs = [];
     const nextMembers = inputMembers.map((m, i) => {
       const prev = m.memberId && existingById[m.memberId];
       if (prev) {
@@ -188,6 +199,7 @@ function saveMeeting(p) {
         pwHash: hash(salt, pw), salt, signedAt: '', signature: '', docHash: '', failCount: 0,
       };
       issued.push({ memberId: row.memberId, name: row.name, password: pw });
+      pendingLogs.push([row.memberId, 'issue-password', row.name]);
       return row;
     });
 
@@ -208,6 +220,7 @@ function saveMeeting(p) {
     replaceMembers(meeting.id, nextMembers);
     log(meeting.id, '', isNew ? 'create' : 'update',
       signaturesReset ? '내용 변경으로 서명 초기화' : '');
+    pendingLogs.forEach((l) => log(meeting.id, l[0], l[1], l[2]));
     return { id: meeting.id, issued, signaturesReset };
   });
 }
@@ -275,8 +288,28 @@ function savePdf(p) {
   const blob = HtmlService.createHtmlOutput(html).getBlob().getAs('application/pdf').setName(name);
   const folder = getPdfFolder();
   const file = folder.createFile(blob);
-  log(meeting.id, '', 'save-pdf', file.getName());
-  return { url: file.getUrl(), name: file.getName() };
+  // 원본 확인용 지문: 나중에 누가 PDF 파일을 올리면 이 값과 비교해 위변조 여부를 확인합니다.
+  const sha256 = toHex(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, blob.getBytes()));
+  const dh = docHash(meeting, membersOf(meeting.id));
+  appendObj(getSheet(SHEETS.PDFS), SHEETS.PDFS,
+    { meetingId: meeting.id, fileId: file.getId(), name: file.getName(), sha256, docHash: dh, createdAt: nowStr() });
+  log(meeting.id, '', 'save-pdf', `${file.getName()} / 파일확인값 ${sha256.slice(0, 16)}`);
+  return { url: file.getUrl(), name: file.getName(), sha256 };
+}
+
+/** 위변조 검증: 올린 PDF 파일의 SHA-256 값이 시스템이 저장한 원본과 같은지 확인합니다(누구나 사용 가능). */
+function verifyPdf(p) {
+  const sha = String(p.sha256 || '').toLowerCase();
+  if (!/^[0-9a-f]{64}$/.test(sha)) throw new Error('파일 확인값이 올바르지 않습니다.');
+  const rec = readAll(SHEETS.PDFS).find((x) => x.sha256 === sha);
+  if (!rec) return { match: false };
+  const meeting = readAll(SHEETS.MEETINGS).find((m) => m.id === rec.meetingId);
+  return {
+    match: true, name: rec.name, createdAt: rec.createdAt,
+    title: meeting ? meeting.title : '(삭제된 회의록)', school: meeting ? meeting.school : '',
+    confirmDate: meeting ? meeting.confirmDate : '',
+    signers: meeting ? membersOf(meeting.id).map((m) => ({ name: m.name, role: m.role, signedAt: m.signedAt })) : [],
+  };
 }
 
 function getPdfFolder() {
@@ -320,7 +353,7 @@ function memberLogin(p) {
       member.failCount = 0;
       updateMember(member);
     }
-    log(meeting.id, member.memberId, 'login', member.name);
+    log(meeting.id, member.memberId, 'login', `${member.name} / ${device(p)}`);
     const token = issueToken('mem', JSON.stringify({ meetingId: meeting.id, memberId: member.memberId }), MEMBER_TTL);
     return Object.assign({ token }, memberView(meeting, member));
   });
@@ -350,11 +383,20 @@ function memberSign(p) {
     if (p.docHash && p.docHash !== h) {
       throw new Error('회의록 내용이 그사이 수정되었습니다. 새로고침 후 다시 확인해 주세요.');
     }
+    if (p.consentEsign !== true) throw new Error('전자서명 사용에 동의해 주세요.');
     member.signedAt = nowStr();
     member.signature = sig;
     member.docHash = h;
     updateMember(member);
-    log(meeting.id, member.memberId, 'sign', `${member.name} / 문서확인값 ${h.slice(0, 12)}`);
+    log(meeting.id, member.memberId, 'sign',
+      `${member.name} / 내용 확인·동의, 전자서명 사용 동의 / 문서확인값 ${h.slice(0, 16)} / ${device(p)}`);
+    // 모든 위원이 서명하면 자동으로 마감해 더 이상 바뀌지 않게 합니다.
+    if (members.every((m) => m.memberId === member.memberId || m.signedAt)) {
+      meeting.status = 'closed';
+      meeting.updatedAt = nowStr();
+      upsertRow(SHEETS.MEETINGS, 'id', meeting);
+      log(meeting.id, '', 'auto-close', '모든 위원 서명 완료');
+    }
     return memberView(meeting, member);
   });
 }
@@ -542,6 +584,11 @@ function clean(v) {
 
 function cleanMultiline(v) {
   return String(v === undefined || v === null ? '' : v).replace(/\r\n?/g, '\n').replace(/\s+$/, '');
+}
+
+/** 위원이 사용한 기기 정보(브라우저가 알려주는 값, 최대 200자) */
+function device(p) {
+  return clean(p.device || '알 수 없음').slice(0, 200);
 }
 
 function getProp(k) { return PropertiesService.getScriptProperties().getProperty(k); }

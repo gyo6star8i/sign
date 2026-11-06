@@ -54,6 +54,7 @@ const ss = {
 const props = {};
 const cache = new Map();
 const drive = {};
+let lastPdf = '';
 
 const gas = {
   SpreadsheetApp: { getActiveSpreadsheet: () => ss },
@@ -66,7 +67,7 @@ const gas = {
   LockService: { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }) },
   Utilities: {
     DigestAlgorithm: { SHA_256: 'sha256' }, Charset: { UTF_8: 'utf8' },
-    computeDigest: (alg, s) => Array.from(crypto.createHash(alg).update(String(s), 'utf8').digest()).map((b) => (b > 127 ? b - 256 : b)),
+    computeDigest: (alg, s) => Array.from(crypto.createHash(alg).update(Array.isArray(s) ? Buffer.from(s.map((b) => b & 255)) : Buffer.from(String(s), 'utf8')).digest()).map((b) => (b > 127 ? b - 256 : b)),
     getUuid: () => crypto.randomUUID(),
     formatDate: (d) => new Date(d.getTime() + 9 * 3600e3).toISOString().replace('T', ' ').slice(0, 19),
   },
@@ -81,10 +82,15 @@ const gas = {
       } };
       return t;
     },
-    createHtmlOutput: (html) => ({ getBlob: () => ({ getAs: () => ({ setName(n) { this.name = n; this.html = html; return this; } }) }) }),
+    // 실제로는 PDF로 바뀌지만, 테스트에서는 HTML 바이트를 그대로 'PDF'로 씁니다.
+    createHtmlOutput: (html) => ({ getBlob: () => ({ getAs: () => ({
+      setName(n) { this.name = n; this.html = html; return this; },
+      getBytes() { return Array.from(Buffer.from(html, 'utf8')).map((b) => (b > 127 ? b - 256 : b)); },
+    }) }) }),
   },
   DriveApp: {
-    createFolder: () => ({ getId: () => 'folder1', createFile: (b) => { drive[b.name] = b.html; return { getUrl: () => 'https://drive.example/' + encodeURIComponent(b.name), getName: () => b.name }; } }),
+    createFolder: () => ({ getId: () => 'folder1', createFile: (b) => { drive[b.name] = b.html; lastPdf = b.html;
+      return { getId: () => 'file-' + Object.keys(drive).length, getUrl: () => 'https://drive.example/' + encodeURIComponent(b.name), getName: () => b.name }; } }),
     getFolderById: () => gas.DriveApp.createFolder(),
   },
   console,
@@ -116,6 +122,11 @@ http.createServer((req, res) => {
     const html = ctx.__doGet({ parameter: Object.fromEntries(url.searchParams) }).getContent();
     res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
     res.end(html.replace('<head>', '<head>' + SHIM));
+    return;
+  }
+  if (url.pathname === '/__pdf') { // 마지막으로 드라이브에 저장된 '원본' 파일
+    res.writeHead(200, { 'content-type': 'application/octet-stream' });
+    res.end(Buffer.from(lastPdf, 'utf8'));
     return;
   }
   if (url.pathname === '/__state') {

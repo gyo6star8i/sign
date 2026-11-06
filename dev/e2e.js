@@ -36,7 +36,7 @@ const BASE = 'http://localhost:8787/exec';
 
   // 위원 서명 (휴대폰 화면). 마지막 위원은 미서명으로 남겨 둡니다.
   const phone = await browser.newContext({ ...devices['iPhone 13'] });
-  for (let i = 0; i < 7; i++) {
+  for (let i = 0; i < 8; i++) {
     const pg = await phone.newPage();
     pg.on('pageerror', (e) => errors.push('member: ' + e.message));
     await pg.goto(creds[i].link);
@@ -67,8 +67,14 @@ const BASE = 'http://localhost:8787/exec';
     await pg.click('#sign');
     if (i === 0) console.log('no-agree msg:', await pg.textContent('#m'));
     await pg.check('#agree');
+    if (i === 0) { await pg.click('#sign'); console.log('no-esign msg:', await pg.textContent('#m')); }
+    await pg.check('#esign');
+    if (i === 1) await (await pg.$('#signCard')).screenshot({ path: OUT + '/4-sign-card.png' });
     await pg.click('#sign');
-    await pg.waitForSelector('.msg.ok');
+    await pg.waitForSelector('.msg.ok', { timeout: 8000 }).catch(async (e) => {
+      console.log('sign failed for member', i, ':', await pg.textContent('#m').catch(() => '?'));
+      throw e;
+    });
     if (i === 1) await pg.screenshot({ path: OUT + '/4-member-done.png', fullPage: true });
     await pg.close();
   }
@@ -79,6 +85,7 @@ const BASE = 'http://localhost:8787/exec';
   await again.waitForSelector('.msg.ok');
   console.log('re-login after signing, pad shown:', !!(await again.$('#pad')));
 
+  console.log('auto-closed:', JSON.parse(await (await fetch('http://localhost:8787/__state')).text()).sheets.Meetings[1][9]);
   await admin.reload();
   await admin.waitForSelector('tr.click');
   await admin.screenshot({ path: OUT + '/5-list.png' });
@@ -97,7 +104,26 @@ const BASE = 'http://localhost:8787/exec';
   await admin.pdf({ path: OUT + '/minutes.pdf', preferCSSPageSize: true, printBackground: true });
   await admin.emulateMedia({ media: 'screen' });
 
-  // 서명 후 내용 수정 → 초기화 경고(confirm 자동 수락) → 서명 0명
+  // 위변조 확인: 원본 파일은 일치, 한 글자 바꾼 파일은 불일치
+  const fs = require('fs');
+  const orig = Buffer.from(await (await fetch('http://localhost:8787/__pdf')).arrayBuffer());
+  fs.writeFileSync(OUT + '/orig.pdf', orig);
+  const forged = Buffer.from(orig); forged[forged.length - 20] ^= 1;
+  fs.writeFileSync(OUT + '/forged.pdf', forged);
+  const v = await browser.newPage({ viewport: { width: 600, height: 700 } });
+  await v.goto(BASE + '?page=verify');
+  await v.setInputFiles('#file', OUT + '/orig.pdf');
+  await v.waitForSelector('#m.msg.ok');
+  await v.screenshot({ path: OUT + '/8-verify-ok.png' });
+  await v.setInputFiles('#file', OUT + '/forged.pdf');
+  await v.waitForSelector('#m.msg.err');
+  console.log('forged:', (await v.textContent('#m')).slice(0, 30));
+
+  // 마감 상태에서는 수정 버튼이 잠김 → 다시 열고 수정하면 서명 초기화
+  // 모두 서명해서 이미 자동 마감된 상태
+  console.log('edit disabled when closed:', await admin.$eval('#edit', (b) => b.disabled));
+  await admin.click('#toggle');
+  await admin.waitForFunction(() => document.querySelector('#toggle') && document.querySelector('#toggle').textContent === '서명 마감');
   await admin.click('#edit');
   await admin.fill('[name=place]', '교무회의실(2층)');
   await admin.click('#save');

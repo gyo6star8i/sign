@@ -207,6 +207,21 @@
     try { return await fn(); } finally { btn.disabled = false; btn.innerHTML = old; }
   }
 
+  function deviceInfo() {
+    const ua = navigator.userAgent || '';
+    const os = /iPhone|iPad/.test(ua) ? 'iOS' : /Android/.test(ua) ? 'Android' : /Windows/.test(ua) ? 'Windows'
+      : /Mac OS X/.test(ua) ? 'macOS' : /Linux/.test(ua) ? 'Linux' : '기타';
+    const br = /SamsungBrowser/.test(ua) ? '삼성 인터넷' : /Edg\//.test(ua) ? 'Edge' : /Whale/.test(ua) ? '웨일'
+      : /KAKAOTALK/i.test(ua) ? '카카오톡' : /CriOS|Chrome/.test(ua) ? 'Chrome' : /Safari/.test(ua) ? 'Safari'
+      : /Firefox/.test(ua) ? 'Firefox' : '기타';
+    return `${os} · ${br} · 화면 ${screen.width}x${screen.height} | ${ua}`.slice(0, 200);
+  }
+
+  async function sha256Hex(buf) {
+    const d = await crypto.subtle.digest('SHA-256', buf);
+    return Array.from(new Uint8Array(d)).map((b) => b.toString(16).padStart(2, '0')).join('');
+  }
+
   function todayKo() {
     const d = new Date();
     return `${d.getFullYear()}. ${d.getMonth() + 1}. ${d.getDate()}.`;
@@ -288,34 +303,103 @@
       </div>`;
   }
 
-  function renderAudit(m, members, docHash) {
+  const LOG_LABEL = {
+    create: '회의록 작성', update: '회의록 수정', 'issue-password': '비밀번호 발급', 'reissue-password': '비밀번호 재발급',
+    login: '본인 확인·열람', 'login-fail': '비밀번호 오류', sign: '동의·서명', 'reset-signature': '서명 취소(관리자)',
+    close: '서명 마감', reopen: '서명 다시 열기', 'auto-close': '자동 마감(전원 서명)', 'save-pdf': 'PDF 원본 저장',
+  };
+
+  /** 전자서명 확인 내역(감사추적) 페이지 */
+  function renderAudit(m, members, docHash, logs) {
+    logs = logs || [];
+    const byId = {};
+    members.forEach((x) => { byId[x.memberId] = x; });
+    const firstView = (id) => { const l = logs.find((x) => x.memberId === id && x.action === 'login'); return l ? l.time : ''; };
+    const signLog = (id) => logs.filter((x) => x.memberId === id && x.action === 'sign').pop();
+    const devOf = (l) => (l && l.detail.split(' / ').pop().split(' | ')[0]) || '-';
+    const events = logs.filter((l) => l.action !== 'save-pdf');
     return `
       <div class="doc audit">
-        <h1>전자서명 확인 내역</h1>
-        <p style="font-size:9pt;margin:0 0 4mm">문서: ${esc(m.title)} / 확인일 ${esc(m.confirmDate)}<br>
-        문서 확인값(SHA-256): <span class="hash">${esc(docHash)}</span></p>
-        <table>
-          <tr><th style="width:8%">번호</th><th style="width:14%">구분</th><th style="width:14%">직위</th><th style="width:16%">성명</th><th style="width:24%">서명 일시</th><th>서명 당시 문서 확인값</th></tr>
-          ${members.map((x, i) => `<tr><td>${i + 1}</td><td>${esc(x.role)}</td><td>${esc(x.position)}</td><td>${esc(x.name)}</td>
-            <td>${esc(x.signedAt || '미서명')}</td><td class="hash">${esc(x.docHash ? x.docHash.slice(0, 16) + '…' : '-')}${x.docHash && x.docHash !== docHash ? ' (불일치)' : ''}</td></tr>`).join('')}
+        <h1>전자서명 확인 내역 (감사추적)</h1>
+        <table style="margin-bottom:4mm">
+          <tr><th style="width:22%">문서</th><td style="text-align:left">${esc(m.title)}</td></tr>
+          <tr><th>문서번호</th><td style="text-align:left" class="hash">${esc(m.id)}</td></tr>
+          <tr><th>작성 / 최종 수정</th><td style="text-align:left">${esc(m.createdAt)} / ${esc(m.updatedAt)}</td></tr>
+          <tr><th>문서 확인값(SHA-256)</th><td style="text-align:left" class="hash">${esc(docHash)}</td></tr>
+          <tr><th>본인 확인 방법</th><td style="text-align:left">위원별 개별 링크 + 관리자가 발급한 6자리 비밀번호 (5회 오류 시 잠금)</td></tr>
+          <tr><th>서명 방식</th><td style="text-align:left">내용 확인·동의 및 전자서명 사용 동의 후 서명 이미지 입력</td></tr>
         </table>
-        <p style="font-size:8.5pt;color:#555;margin-top:4mm">각 위원은 개별 발급된 비밀번호로 본인 확인 후 회의록 내용을 확인하고 동의·서명하였습니다.
-        서명 당시 문서 확인값이 위 문서 확인값과 같으면, 서명 후 내용이 바뀌지 않았다는 뜻입니다.</p>
+        <table>
+          <tr><th style="width:5%">번호</th><th style="width:11%">구분</th><th style="width:11%">성명</th><th style="width:17%">최초 열람</th>
+            <th style="width:17%">서명 일시</th><th style="width:21%">서명 기기</th><th>서명 당시 문서 확인값</th></tr>
+          ${members.map((x, i) => {
+            const sl = signLog(x.memberId);
+            const mismatch = x.docHash && x.docHash !== docHash;
+            return `<tr><td>${i + 1}</td><td>${esc(x.role)}</td><td>${esc(x.name)}</td><td>${esc(firstView(x.memberId) || '-')}</td>
+              <td>${esc(x.signedAt || '미서명')}</td><td>${esc(x.signedAt ? devOf(sl) : '-')}</td>
+              <td class="hash">${esc(x.docHash ? x.docHash.slice(0, 16) + '…' : '-')}${mismatch ? ' <b>(불일치)</b>' : x.docHash ? ' (일치)' : ''}</td></tr>`;
+          }).join('')}
+        </table>
+        <h1 style="font-size:11pt;text-align:left;margin:6mm 0 2mm">처리 이력</h1>
+        <table>
+          <tr><th style="width:24%">일시</th><th style="width:22%">처리</th><th style="width:16%">대상</th><th>내용</th></tr>
+          ${events.map((l) => `<tr><td>${esc(l.time)}</td><td>${esc(LOG_LABEL[l.action] || l.action)}</td>
+            <td>${esc((byId[l.memberId] && byId[l.memberId].name) || (l.memberId ? '-' : '관리자'))}</td>
+            <td style="text-align:left;font-size:8pt">${esc(l.action === 'sign' || l.action === 'login' ? devOf(l) : /password|reset-signature|login-fail/.test(l.action) ? '' : l.detail)}</td></tr>`).join('')}
+        </table>
+        <p style="font-size:8.5pt;color:#555;margin-top:4mm">· 서명 당시 문서 확인값이 위 문서 확인값과 같으면, 위원이 서명한 뒤 회의록 내용이 바뀌지 않았다는 뜻입니다.<br>
+        · 구글 드라이브에 저장한 PDF 원본은 '위변조 확인' 페이지(${esc((BOOT.appUrl || '') + '?page=verify')})에 파일을 올려 원본 여부를 확인할 수 있습니다.</p>
       </div>`;
   }
 
   // ───── 첫 화면 분기 ─────
   function start() {
     if (P.page === 'admin') return adminStart();
+    if (P.page === 'verify') return verifyPage();
     if (P.m) return memberStart();
     app.innerHTML = `
       <div class="wrap narrow">
         <div class="card">
           <h2>회의록 전자서명</h2>
           <p class="muted">위원님은 담당자에게 받은 서명 링크로 접속해 주세요.</p>
-          <a class="btn" href="${esc((BOOT.appUrl || '') + '?page=admin')}">관리자 페이지</a>
+          <div class="row"><a class="btn" href="${esc((BOOT.appUrl || '') + '?page=admin')}">관리자 페이지</a>
+          <a class="btn" href="${esc((BOOT.appUrl || '') + '?page=verify')}">PDF 위변조 확인</a></div>
         </div>
       </div>`;
+  }
+
+  function verifyPage() {
+    app.innerHTML = `
+      <div class="wrap narrow">
+        <div class="card">
+          <h2>회의록 PDF 위변조 확인</h2>
+          <p class="muted" style="margin-top:-6px">이 시스템에서 구글 드라이브에 저장한 회의록 PDF 원본인지 확인합니다.
+            파일 내용은 서버로 보내지 않고, 이 기기에서 계산한 확인값(SHA-256)만 비교합니다.</p>
+          <label class="f"><span>PDF 파일 선택</span><input type="file" id="file" accept="application/pdf,.pdf"></label>
+          <div id="m" class="hidden"></div>
+        </div>
+      </div>`;
+    $('#file').addEventListener('change', async (e) => {
+      const f = e.target.files[0];
+      const box = $('#m');
+      if (!f) return;
+      box.className = 'msg'; box.innerHTML = '<span class="spinner"></span> 확인하는 중…';
+      try {
+        const sha = await sha256Hex(await f.arrayBuffer());
+        const r = await call('verifyPdf', { sha256: sha });
+        if (r.match) {
+          box.className = 'msg ok';
+          box.innerHTML = `<b>원본과 일치합니다.</b> 서명 이후 바뀌지 않은 원본 PDF입니다.<br>
+            문서: ${esc(r.title)} (${esc(r.school)})<br>확인 날짜: ${esc(r.confirmDate)} · 원본 저장: ${esc(r.createdAt)}<br>
+            서명: ${r.signers.map((x) => `${esc(x.name)}(${x.signedAt ? esc(x.signedAt) : '미서명'})`).join(', ')}
+            <div class="muted" style="margin-top:6px;word-break:break-all">파일 확인값 ${esc(sha)}</div>`;
+        } else {
+          box.className = 'msg err';
+          box.innerHTML = `<b>일치하는 원본이 없습니다.</b> 내용이 바뀌었거나, 이 시스템의 '구글 드라이브에 저장'으로 만든 원본이 아닙니다.
+            (인쇄 창에서 만든 PDF는 확인할 수 없습니다.)<div class="muted" style="margin-top:6px;word-break:break-all">파일 확인값 ${esc(sha)}</div>`;
+        }
+      } catch (err) { showError(box, err); }
+    });
   }
 
   // ═════════════ 관리자 ═════════════
@@ -595,13 +679,14 @@
             <div><b>서명 현황</b> <span class="muted">${signed}/${total}명</span> ${statusBadge({ status: m.status, total, signed })}</div>
             <div class="row">
               <button class="primary" id="print">PDF 출력</button>
-              <button id="edit">내용 수정</button>
+              <button id="edit" ${closed ? 'disabled title="마감된 회의록은 [서명 다시 열기] 후 수정할 수 있습니다"' : ''}>내용 수정</button>
               <button id="toggle">${closed ? '서명 다시 열기' : '서명 마감'}</button>
               <button class="danger" id="del">삭제</button>
             </div>
           </div>
           ${signed === total && total ? '<div class="msg ok">모든 위원이 서명했습니다. <b>PDF 출력</b>으로 회의록을 저장하세요.</div>' : ''}
-          ${closed ? '<div class="msg warn">마감된 회의록입니다. 위원이 더 이상 서명할 수 없습니다.</div>' : ''}
+          ${closed ? '<div class="msg warn">마감된 회의록입니다. 위원이 더 이상 서명할 수 없고, 내용도 수정할 수 없습니다.</div>' : ''}
+          ${(r.pdfs || []).length ? `<p class="muted" style="margin:6px 0 0">저장된 원본 PDF: ${r.pdfs.map((x) => `<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.createdAt)}</a>`).join(', ')}</p>` : ''}
           <div class="table-scroll"><table class="list" style="margin-top:8px">
             <tr><th>#</th><th>구분</th><th>직위</th><th>성명</th><th>상태</th><th></th></tr>
             ${r.members.map((x, i) => `
@@ -655,8 +740,9 @@
   }
 
   function buildPrintHtml(r, withAudit) {
-    const docs = renderDoc(r.meeting, r.members, { showSignatures: true })
-      + (withAudit ? renderAudit(r.meeting, r.members, r.docHash) : '');
+    const footer = `문서번호 ${r.meeting.id.slice(0, 12)} · 문서 확인값 ${r.docHash.slice(0, 16)}`;
+    const docs = renderDoc(r.meeting, r.members, { showSignatures: true, footer })
+      + (withAudit ? renderAudit(r.meeting, r.members, r.docHash, r.logs) : '');
     return docs;
   }
 
@@ -668,11 +754,12 @@
       ${signed < total ? `<div class="msg warn">아직 ${total - signed}명이 서명하지 않았습니다. 빈칸으로 출력됩니다.</div>` : ''}
       <label class="check"><input type="checkbox" id="audit" checked> 전자서명 확인 내역(서명 일시·문서 확인값) 페이지 포함</label>
       <p class="muted">• <b>인쇄 / PDF로 저장</b>: 인쇄 창에서 대상(프린터)을 <b>'PDF로 저장'</b>으로 고르면 PDF 파일이 됩니다. 양식이 가장 정확하게 나옵니다.<br>
-      • <b>구글 드라이브에 저장</b>: 드라이브의 '회의록 전자서명 PDF' 폴더에 PDF를 바로 저장합니다.</p>
+      • <b>구글 드라이브에 저장 (원본)</b>: 드라이브의 '회의록 전자서명 PDF' 폴더에 저장하고 파일 확인값을 기록합니다.
+        이 파일은 <b>위변조 확인</b> 페이지에서 원본 여부를 검증할 수 있어, 보관·결재 첨부용 원본으로 권장합니다.</p>
       <div id="pm" class="hidden"></div>
       <div class="row end">
         <button data-close>닫기</button>
-        <button id="drive">구글 드라이브에 저장</button>
+        <button id="drive">구글 드라이브에 저장 (원본)</button>
         <button class="primary" id="doPrint">인쇄 / PDF로 저장</button>
       </div>`, (back, close) => {
       $('#doPrint', back).addEventListener('click', () => {
@@ -692,7 +779,8 @@
           const res = await busy(e.currentTarget, () => call('savePdf', { token: state.adminToken, meetingId: r.meeting.id, html }));
           const pm = $('#pm', back);
           pm.className = 'msg ok';
-          pm.innerHTML = `저장했습니다: <a href="${esc(res.url)}" target="_blank" rel="noopener">${esc(res.name)}</a>`;
+          pm.innerHTML = `원본 PDF를 저장했습니다: <a href="${esc(res.url)}" target="_blank" rel="noopener">${esc(res.name)}</a>
+            <div class="muted" style="word-break:break-all">파일 확인값 ${esc(res.sha256)}</div>`;
         } catch (err) { if (!handleAuthError(err)) showError($('#pm', back), err); }
       });
     });
@@ -729,7 +817,7 @@
       ev.preventDefault();
       const memberId = fixed ? fixed.memberId : $('#who').value;
       try {
-        const r = await busy($('#f button'), () => call('memberLogin', { meetingId: P.m, memberId, password: $('#pw').value }));
+        const r = await busy($('#f button'), () => call('memberLogin', { meetingId: P.m, memberId, password: $('#pw').value, device: deviceInfo() }));
         state.member = r;
         memberView();
       } catch (e) { showError('#m', e); }
@@ -760,6 +848,10 @@
           </div>
           <label class="check"><input type="checkbox" id="agree">
             <span>위 회의록의 내용을 확인하였으며, 이에 동의하고 서명합니다.</span></label>
+          <label class="check"><input type="checkbox" id="esign">
+            <span>이 전자서명을 자필 서명과 같은 서명으로 사용하는 데 동의합니다.
+            <span class="muted" style="display:block;font-weight:400">「전자서명법」 제3조에 따라, 동의한 전자서명은 서명·기명날인과 같은 효력을 가집니다.
+            서명 일시와 접속 기기 정보가 서명 기록으로 함께 보관됩니다.</span></span></label>
           <div id="m" class="hidden"></div>
           <button class="primary" id="sign" style="width:100%;padding:13px">동의하고 서명하기</button>
         </div>`}
@@ -773,15 +865,17 @@
     });
     if (done || closed) return;
 
-    const pad = createPad($('#pad'), () => $('#hint').classList.add('hidden'));
+    const clearMsg = () => { const b = $('#m'); if (b) { b.className = 'hidden'; b.textContent = ''; } };
+    const pad = createPad($('#pad'), () => { $('#hint').classList.add('hidden'); clearMsg(); });
     $('#clear').addEventListener('click', () => { pad.clear(); $('#hint').classList.remove('hidden'); });
-    $('#auto').addEventListener('click', async () => { await pad.drawName(r.me.name); $('#hint').classList.add('hidden'); });
+    $('#auto').addEventListener('click', async () => { await pad.drawName(r.me.name); $('#hint').classList.add('hidden'); clearMsg(); });
     $('#sign').addEventListener('click', async (e) => {
       if (pad.isEmpty()) return showError('#m', new Error('서명 칸에 서명해 주세요.'));
       if (!$('#agree').checked) return showError('#m', new Error('내용 확인 및 동의에 체크해 주세요.'));
+      if (!$('#esign').checked) return showError('#m', new Error('전자서명 사용 동의에 체크해 주세요.'));
       const signature = pad.export();
       try {
-        const res = await busy(e.currentTarget, () => call('memberSign', { token: r.token, signature, docHash: r.docHash }));
+        const res = await busy(e.currentTarget, () => call('memberSign', { token: r.token, signature, docHash: r.docHash, consentEsign: true, device: deviceInfo() }));
         state.member = Object.assign({ token: r.token }, res);
         memberView();
         window.scrollTo(0, 0);
