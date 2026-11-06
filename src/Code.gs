@@ -77,6 +77,7 @@ const ACTIONS = {
   adminStatus: () => ({ hasPassword: !!getProp('ADMIN_PW_HASH') }),
   adminSetup,
   adminLogin,
+  adminChangePassword,
   listMeetings,
   getMeeting,
   saveMeeting,
@@ -118,6 +119,23 @@ function adminLogin(p) {
   }
   cache.remove('adm-fails');
   return { token: issueToken('adm', '1', ADMIN_TTL) };
+}
+
+function adminChangePassword(p) {
+  requireAdmin(p);
+  return withLock(() => {
+    const salt = getProp('ADMIN_PW_SALT');
+    if (hash(salt, String(p.oldPassword || '')) !== getProp('ADMIN_PW_HASH')) {
+      throw new Error('현재 비밀번호가 올바르지 않습니다.');
+    }
+    const pw = String(p.newPassword || '');
+    if (pw.length < 6) throw new Error('새 비밀번호는 6자 이상으로 정해 주세요.');
+    const newSalt = newId();
+    setProp('ADMIN_PW_SALT', newSalt);
+    setProp('ADMIN_PW_HASH', hash(newSalt, pw));
+    log('', '', 'admin-password', '관리자 비밀번호 변경');
+    return true;
+  });
 }
 
 function requireAdmin(p) {

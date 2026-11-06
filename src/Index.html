@@ -442,11 +442,34 @@
 
   function adminHeader(title, right) {
     return `<header class="top"><h1>${esc(title)}</h1><div class="row">${right || ''}
+      <button class="small" id="chpw">비밀번호 변경</button>
       <button class="small" id="logout">로그아웃</button></div></header>`;
   }
   function bindLogout() {
     const b = $('#logout');
     if (b) b.addEventListener('click', () => { store.del('adminToken'); state.adminToken = null; adminStart(); });
+    const c = $('#chpw');
+    if (c) c.addEventListener('click', () => modal(`
+      <h2>관리자 비밀번호 변경</h2>
+      <form id="pwf">
+        <label class="f"><span>현재 비밀번호</span><input type="password" id="op" autocomplete="current-password" required></label>
+        <label class="f"><span>새 비밀번호 (6자 이상)</span><input type="password" id="np" autocomplete="new-password" required></label>
+        <label class="f"><span>새 비밀번호 확인</span><input type="password" id="np2" autocomplete="new-password" required></label>
+        <div id="pwm" class="hidden"></div>
+        <div class="row end"><button type="button" data-close>취소</button><button class="primary">변경</button></div>
+      </form>`, (back, close) => {
+      $('#op', back).focus();
+      $('#pwf', back).addEventListener('submit', async (ev) => {
+        ev.preventDefault();
+        if ($('#np', back).value !== $('#np2', back).value) return showError($('#pwm', back), new Error('새 비밀번호 확인이 일치하지 않습니다.'));
+        try {
+          await busy($('#pwf button.primary', back), () => call('adminChangePassword',
+            { token: state.adminToken, oldPassword: $('#op', back).value, newPassword: $('#np', back).value }));
+          close();
+          toast('비밀번호를 바꿨습니다');
+        } catch (err) { if (!handleAuthError(err)) showError($('#pwm', back), err); }
+      });
+    }));
   }
 
   async function adminList() {
