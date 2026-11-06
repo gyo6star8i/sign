@@ -39,6 +39,12 @@
 > **학교 구글 계정(Google Workspace)을 쓰는 경우**: 관리자 정책에 따라 6번에서 '모든 사용자'가 없고 '○○학교 내 사용자'만 보일 수 있습니다.
 > 그러면 위원도 학교 구글 계정으로 로그인해야 접속됩니다. 위원이 계정 없이 접속하게 하려면 개인 구글 계정으로 설치하세요.
 
+### 바로가기 주소
+- 관리자: https://gyo6star8i.github.io/sign/admin
+- PDF 위변조 확인: https://gyo6star8i.github.io/sign/verify
+
+(웹 앱을 **새 배포**로 다시 만들어 주소가 바뀌면 `index.html`, `admin/index.html`, `verify/index.html`의 주소도 바꿔야 합니다.)
+
 ### 코드를 업데이트할 때
 Apps Script에서 파일 내용을 바꾼 뒤 **배포 → 배포 관리 → ✏ 수정 → 버전: 새 버전 → 배포**를 눌러야 반영됩니다. (주소는 그대로 유지됩니다.)
 
