@@ -29,8 +29,20 @@ const SHEETS = {
   },
 };
 
-// 위원에게 보내는 짧은 링크의 앞부분(GitHub Pages). 비워 두면 긴 웹 앱 주소를 그대로 씁니다.
-const SHORT_LINK_BASE = 'https://gyo6star8i.github.io/sign/';
+// 위원에게 보내는 짧은 링크(GitHub Pages)는 아래에 등록된 웹 앱에서만 씁니다.
+// 다른 분이 사본으로 설치하면 자동으로 긴 웹 앱 주소를 씁니다.
+// 직접 GitHub Pages 바로가기를 만든 경우: 스크립트 속성 SHORT_LINK_BASE 에 그 주소를 넣으면 됩니다.
+const SHORT_LINKS = {
+  'AKfycbyeRwIVsOflkVV7npgALebFNX4Na-XIJvKYiPY2MNPI-gO_S2IhyhH_aIiQJJh80cw': 'https://gyo6star8i.github.io/sign/',
+};
+
+function shortLinkBase() {
+  const custom = getProp('SHORT_LINK_BASE');
+  if (custom) return custom;
+  const url = ScriptApp.getService().getUrl() || '';
+  const key = Object.keys(SHORT_LINKS).find((id) => url.indexOf(id) >= 0);
+  return key ? SHORT_LINKS[key] : '';
+}
 const CODE_CHARS = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ'; // 헷갈리는 0/O, 1/I 제외
 
 const MEETING_FIELDS = ['title', 'datetime', 'place', 'committee', 'agenda', 'result', 'confirmDate', 'school'];
@@ -54,7 +66,7 @@ function doGet(e) {
   t.boot = JSON.stringify({
     params: { page: params.page || '', m: params.m || '', u: params.u || '' },
     appUrl: ScriptApp.getService().getUrl(),
-    shortBase: SHORT_LINK_BASE,
+    shortBase: shortLinkBase(),
   }).replace(/</g, '\\u003c');
   return t.evaluate()
     .setTitle('회의록 전자서명')

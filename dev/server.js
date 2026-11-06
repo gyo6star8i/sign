@@ -99,7 +99,8 @@ const ctx = vm.createContext(gas);
 // 짧은 링크는 GitHub Pages 대신 이 서버의 /short/ 가 받습니다.
 const SHORT = `http://localhost:${PORT}/short/`;
 vm.runInContext(fs.readFileSync(path.join(SRC, 'Code.gs'), 'utf8')
-  .replace(/const SHORT_LINK_BASE = '[^']*';/, `const SHORT_LINK_BASE = '${SHORT}';`) + '\n;globalThis.__api = api; globalThis.__doGet = doGet;', ctx);
+  .replace("'AKfycbyeRwIVsOflkVV7npgALebFNX4Na-XIJvKYiPY2MNPI-gO_S2IhyhH_aIiQJJh80cw': 'https://gyo6star8i.github.io/sign/'",
+    `'localhost:${PORT}': '${SHORT}'`) + '\n;globalThis.__api = api; globalThis.__doGet = doGet;', ctx);
 
 const SHIM = `<script>
 window.google = { script: { run: (function mk(ok, fail) {
