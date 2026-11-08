@@ -25,7 +25,8 @@ const SHEETS = {
   },
   PDFS: {
     name: 'Pdfs',
-    headers: ['meetingId', 'fileId', 'name', 'sha256', 'docHash', 'createdAt'],
+    // 위변조 확인용 기록. 회의록을 파기해도 이 기록은 남아 확인 기능이 계속 작동합니다.
+    headers: ['meetingId', 'fileId', 'name', 'sha256', 'docHash', 'createdAt', 'title', 'school', 'confirmDate', 'signers'],
   },
 };
 
@@ -99,6 +100,7 @@ const ACTIONS = {
   resetSignature,
   savePdf,
   verifyPdf,
+  purgeMeeting,
   // 위원
   getPublicMeeting,
   memberLogin,
@@ -336,8 +338,11 @@ function savePdf(p) {
   // 원본 확인용 지문: 나중에 누가 PDF 파일을 올리면 이 값과 비교해 위변조 여부를 확인합니다.
   const sha256 = toHex(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, blob.getBytes()));
   const dh = docHash(meeting, membersOf(meeting.id));
-  appendObj(getSheet(SHEETS.PDFS), SHEETS.PDFS,
-    { meetingId: meeting.id, fileId: file.getId(), name: file.getName(), sha256, docHash: dh, createdAt: nowStr() });
+  const signers = membersOf(meeting.id).map((m) => ({ name: m.name, role: m.role, signedAt: m.signedAt }));
+  appendObj(getSheet(SHEETS.PDFS), SHEETS.PDFS, {
+    meetingId: meeting.id, fileId: file.getId(), name: file.getName(), sha256, docHash: dh, createdAt: nowStr(),
+    title: meeting.title, school: meeting.school, confirmDate: meeting.confirmDate, signers: JSON.stringify(signers),
+  });
   log(meeting.id, '', 'save-pdf', `${file.getName()} / 파일확인값 ${sha256.slice(0, 16)}`);
   return { url: file.getUrl(), name: file.getName(), sha256 };
 }
@@ -348,6 +353,13 @@ function verifyPdf(p) {
   if (!/^[0-9a-f]{64}$/.test(sha)) throw new Error('파일 확인값이 올바르지 않습니다.');
   const rec = readAll(SHEETS.PDFS).find((x) => x.sha256 === sha);
   if (!rec) return { match: false };
+  // PDF를 저장할 때 남긴 요약을 씁니다(회의록을 파기한 뒤에도 확인 가능).
+  if (rec.signers) {
+    let signers = [];
+    try { signers = JSON.parse(rec.signers); } catch (e) { /* 무시 */ }
+    return { match: true, name: rec.name, createdAt: rec.createdAt, title: rec.title, school: rec.school,
+      confirmDate: rec.confirmDate, signers, purged: !readAll(SHEETS.MEETINGS).some((m) => m.id === rec.meetingId) };
+  }
   const meeting = readAll(SHEETS.MEETINGS).find((m) => m.id === rec.meetingId);
   return {
     match: true, name: rec.name, createdAt: rec.createdAt,
@@ -355,6 +367,29 @@ function verifyPdf(p) {
     confirmDate: meeting ? meeting.confirmDate : '',
     signers: meeting ? membersOf(meeting.id).map((m) => ({ name: m.name, role: m.role, signedAt: m.signedAt })) : [],
   };
+}
+
+/**
+ * 클라우드 데이터 파기: PC에 내려받아 에듀파인에 등록한 뒤, 구글 시트·드라이브에서 회의록을 지웁니다.
+ * 회의록 본문, 위원 명단·비밀번호, 서명 이미지, 처리 이력, 드라이브 PDF 파일을 삭제하고
+ * 위변조 확인용 기록(Pdfs: 파일 확인값, 제목, 날짜, 서명자 이름·시각)만 남깁니다.
+ */
+function purgeMeeting(p) {
+  requireAdmin(p);
+  return withLock(() => {
+    const meeting = findMeeting(p.id);
+    if (meeting.status !== 'closed') throw new Error('서명이 마감된 회의록만 파기할 수 있습니다.');
+    let trashed = 0;
+    readAll(SHEETS.PDFS).filter((x) => x.meetingId === meeting.id && x.fileId).forEach((x) => {
+      try { DriveApp.getFileById(x.fileId).setTrashed(true); trashed++; } catch (e) { /* 이미 지워진 파일 */ }
+    });
+    deleteRowsWhere(SHEETS.MEMBERS, (r) => r.meetingId === meeting.id);
+    deleteRowsWhere(SHEETS.LOG, (r) => r.meetingId === meeting.id);
+    deleteRowsWhere(SHEETS.MEETINGS, (r) => r.id === meeting.id);
+    const kept = readAll(SHEETS.PDFS).filter((x) => x.meetingId === meeting.id).length;
+    log(meeting.id, '', 'purge', `${meeting.title} (${meeting.confirmDate}) 클라우드 데이터 파기, 위변조 확인 기록 ${kept}건 보존`);
+    return { trashed, kept };
+  });
 }
 
 function getPdfFolder() {

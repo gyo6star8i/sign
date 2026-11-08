@@ -55,6 +55,7 @@ const props = {};
 const cache = new Map();
 const drive = {};
 let lastPdf = '';
+const trashedFiles = [];
 
 const gas = {
   SpreadsheetApp: { getActiveSpreadsheet: () => ss },
@@ -92,6 +93,7 @@ const gas = {
     createFolder: () => ({ getId: () => 'folder1', createFile: (b) => { drive[b.name] = b.html; lastPdf = b.html;
       return { getId: () => 'file-' + Object.keys(drive).length, getUrl: () => 'https://drive.example/' + encodeURIComponent(b.name), getName: () => b.name }; } }),
     getFolderById: () => gas.DriveApp.createFolder(),
+    getFileById: (id) => ({ setTrashed() { trashedFiles.push(id); } }),
   },
   console,
 };
@@ -142,7 +144,7 @@ http.createServer((req, res) => {
   }
   if (url.pathname === '/__state') {
     res.writeHead(200, { 'content-type': 'application/json' });
-    res.end(JSON.stringify({ sheets: Object.fromEntries(Object.entries(sheets).map(([k, v]) => [k, v._rows])), drive: Object.keys(drive) }));
+    res.end(JSON.stringify({ sheets: Object.fromEntries(Object.entries(sheets).map(([k, v]) => [k, v._rows])), drive: Object.keys(drive), trashed: trashedFiles }));
     return;
   }
   res.writeHead(404); res.end();
