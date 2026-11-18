@@ -237,6 +237,23 @@
 
   const app = document.getElementById('app');
   const P = BOOT.params || {};
+
+  // 아이폰(사파리)은 '터치를 받을 영역'을 미리 기억해 두는데, 구글 웹 앱 틀 안에서는 화면이 길어진 뒤에도
+  // 이 기억이 바로 갱신되지 않아 서명 칸 터치가 먹통이 될 수 있습니다.
+  // 처음부터 문서 전체에 터치 감지를 걸어 두고, 서명 칸에서만 스크롤을 막습니다.
+  const onPad = (e) => !!(e.target && e.target.closest && e.target.closest('.sigpad-wrap'));
+  ['touchstart', 'touchmove'].forEach((t) => document.addEventListener(t, (e) => {
+    if (onPad(e) && e.cancelable) e.preventDefault();
+  }, { passive: false }));
+
+  /** 화면 배치를 한 번 다시 계산하게 합니다(아이폰이 터치 영역을 새로 잡도록). */
+  function nudgeLayout() {
+    const d = document.createElement('div');
+    d.style.cssText = 'height:1px;width:1px';
+    document.body.appendChild(d);
+    void document.body.offsetHeight;
+    setTimeout(() => { d.remove(); void document.body.offsetHeight; }, 120);
+  }
   const state = { adminToken: store.get('adminToken'), member: null };
 
   // ───── 공통 도우미 ─────
@@ -1405,6 +1422,9 @@
     const clearMsg = () => { const b = $('#m'); if (b) { b.className = 'hidden'; b.textContent = ''; } };
     $all('[name=vote]').forEach((x) => x.addEventListener('change', clearMsg));
     const pad = createPad($('#pad'), () => { $('#hint').classList.add('hidden'); clearMsg(); });
+    // 회의록이 그려지고 화면이 길어진 뒤 배치를 다시 계산합니다(글꼴 로딩 뒤에도 한 번 더).
+    setTimeout(nudgeLayout, 300);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => setTimeout(nudgeLayout, 100));
     $('#clear').addEventListener('click', () => { pad.clear(); $('#hint').classList.remove('hidden'); });
     $('#sign').addEventListener('click', async (e) => {
       const voteEl = $('[name=vote]:checked');
@@ -1480,10 +1500,12 @@
     // 구글 웹 앱 화면(iframe)은 불러온 뒤에 크기가 바뀔 수 있어, 칸 크기가 바뀌면 바로 맞춥니다.
     if (window.ResizeObserver) new ResizeObserver(() => resize()).observe(canvas);
     // 화면을 내려 서명 칸이 보이는 순간에도 한 번 더 맞춥니다.
-    if (window.IntersectionObserver) new IntersectionObserver((es) => { if (es.some((x) => x.isIntersecting)) resize(); }).observe(canvas);
+    if (window.IntersectionObserver) new IntersectionObserver((es) => {
+      if (es.some((x) => x.isIntersecting)) { resize(); nudgeLayout(); }
+    }).observe(canvas);
     if (window.visualViewport) window.visualViewport.addEventListener('resize', resize);
     // 일부 휴대폰 브라우저에서 터치가 화면 스크롤로 넘어가지 않게 막습니다.
-    ['touchstart', 'touchmove'].forEach((t) => canvas.addEventListener(t, (e) => e.preventDefault(), { passive: false }));
+    ['touchstart', 'touchmove'].forEach((t) => canvas.addEventListener(t, (e) => { if (e.cancelable) e.preventDefault(); }, { passive: false }));
 
     // 칸의 실제 크기와 그림 크기가 다르면 좌표를 그 비율로 맞춥니다(획이 엉뚱한 곳에 그려지거나 안 보이는 문제 방지).
     const pos = (e) => {
