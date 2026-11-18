@@ -1,0 +1,49 @@
+# main에 src/ 변경이 올라오면 Apps Script에 코드를 올리고, 기존 웹 앱 배포를 새 버전으로 갱신합니다.
+# (주소는 그대로 유지됩니다.) 필요한 설정은 README의 '자동 배포' 참고.
+name: Apps Script 배포
+
+on:
+  push:
+    branches: [main]
+    paths: ['src/**', '.github/workflows/deploy.yml']
+  workflow_dispatch:
+
+concurrency:
+  group: apps-script-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      SCRIPT_ID: ${{ secrets.CLASP_SCRIPT_ID }}
+      DEPLOYMENT_ID: ${{ vars.CLASP_DEPLOYMENT_ID || 'AKfycbyeRwIVsOflkVV7npgALebFNX4Na-XIJvKYiPY2MNPI-gO_S2IhyhH_aIiQJJh80cw' }}
+      CLASPRC: ${{ secrets.CLASPRC_JSON }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 설정 확인
+        run: |
+          if [ -z "$SCRIPT_ID" ] || [ -z "$CLASPRC" ]; then
+            echo "::error::저장소 Secrets에 CLASP_SCRIPT_ID, CLASPRC_JSON을 등록해야 합니다(README '자동 배포' 참고)."
+            exit 1
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: clasp 설치 및 인증
+        run: |
+          npm install -g @google/clasp@2.4.2
+          printf '%s' "$CLASPRC" > ~/.clasprc.json
+          printf '{"scriptId":"%s","rootDir":"src"}' "$SCRIPT_ID" > .clasp.json
+
+      - name: 코드 올리기
+        run: clasp push --force
+
+      - name: 웹 앱 새 버전으로 배포
+        run: |
+          DESC="$(git log -1 --format=%s | cut -c1-90) (${GITHUB_SHA::7})"
+          clasp deploy --deploymentId "$DEPLOYMENT_ID" --description "$DESC"
+          clasp deployments

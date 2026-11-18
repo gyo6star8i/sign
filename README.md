@@ -56,6 +56,26 @@
 ### 코드를 업데이트할 때
 Apps Script에서 파일 내용을 바꾼 뒤 **배포 → 배포 관리 → ✏ 수정 → 버전: 새 버전 → 배포**를 눌러야 반영됩니다. (주소는 그대로 유지됩니다.)
 
+### 자동 배포 (GitHub Actions)
+`main`에 `src/` 변경을 push하면 `.github/workflows/deploy.yml`이 Apps Script에 코드를 올리고 기존 웹 앱을 **새 버전으로 배포**합니다(주소 유지).
+처음 한 번만 아래를 설정하세요.
+
+1. https://script.google.com/home/usersettings 에서 **Google Apps Script API**를 **사용**으로 켭니다.
+2. PC(Node.js 설치)에서 구글 로그인 정보를 만듭니다.
+   ```bash
+   npx @google/clasp@2.4.2 login
+   ```
+   브라우저에서 승인하면 홈 폴더에 `.clasprc.json`이 생깁니다(Windows: `C:\Users\사용자\.clasprc.json`).
+3. Apps Script **⚙ 프로젝트 설정**의 **스크립트 ID**를 복사합니다.
+4. GitHub 저장소 **Settings → Secrets and variables → Actions → New repository secret**에 등록합니다.
+   - `CLASP_SCRIPT_ID`: 3번의 스크립트 ID
+   - `CLASPRC_JSON`: 2번 `.clasprc.json` 파일 내용 전체
+5. **Actions → Apps Script 배포 → Run workflow**로 한 번 실행해 확인합니다.
+
+- 배포 ID는 웹 앱 주소(`/macros/s/<배포 ID>/exec`)에서 가져와 기본값으로 넣어 두었습니다. 바뀌면 저장소 **Variables**에 `CLASP_DEPLOYMENT_ID`로 등록하세요.
+- `.clasprc.json`은 구글 계정 접근 권한이므로 저장소에 커밋하거나 남에게 보내지 마세요.
+- 자동 배포는 `src/`의 파일로 Apps Script 코드를 **덮어씁니다**. Apps Script 편집기에서 직접 고친 내용은 저장소에도 반영해 두세요.
+
 ## 다른 선생님께 나눠 드리기
 
 데이터(회의록·비밀번호·서명)는 설치한 사람의 구글 시트에 저장되므로, **학교(사용자)마다 각자 설치**합니다.
