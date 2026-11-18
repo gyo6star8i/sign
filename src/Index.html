@@ -965,7 +965,7 @@
     $('#awardAuto').addEventListener('click', () => { syncAward(true); toast('안건·회의 결과에서 다시 만들었습니다'); });
 
     const setType = (type, fromUser) => {
-      el.mtype.value = type;
+      $all('[name=mtype]').forEach((r) => { r.checked = r.value === type; });
       $('#awardCard').classList.toggle('hidden', type !== AWARD);
       if (!fromUser) return;
       // '인사자문위원회' ↔ '공적심사위원회' 이름을 맞춰 바꿉니다.
@@ -1031,8 +1031,14 @@
       try {
         const r = await busy(copyBtn, () => call('getMeeting', { token: state.adminToken, id: src }));
         fill(Object.assign({}, r.meeting, { confirmDate: todayKo() }));
-        setType(r.meeting.type === AWARD ? AWARD : '', false);
-        if (r.meeting.award) { fillAward(r.meeting.award); auto.title = false; auto.criteria = false; }
+        if (r.meeting.type === AWARD && r.meeting.award) {
+          setType(AWARD, false);
+          fillAward(r.meeting.award);
+          auto.title = false; auto.criteria = false; auto.org = false;
+        } else if (el.mtype.value === AWARD) {
+          // 공적심사위원회로 고른 상태에서 일반 회의록을 불러오면, 불러온 안건으로 의결서를 새로 만듭니다.
+          syncAward(true);
+        }
         tbody.innerHTML = '';
         r.members.forEach((x) => addRow({ role: x.role, position: x.position, name: x.name }));
         toast('불러왔습니다');
@@ -1062,8 +1068,15 @@
       ev.preventDefault();
       const d = collect();
       if (d.meeting.type === AWARD && !d.meeting.award.title.trim()) {
-        el.a_title.focus();
-        return showError('#m', new Error('공적심사의결서 제목을 입력해 주세요.'));
+        // 비어 있으면 안건에서 한 번 더 만들어 봅니다.
+        el.a_title.value = awardTitleFrom(el.agenda.value);
+        if (!el.a_criteria.value.trim()) el.a_criteria.value = awardCriteriaFrom(el.a_title.value.trim(), el.result.value);
+        if (!el.a_title.value.trim()) {
+          el.a_title.scrollIntoView({ block: 'center' });
+          el.a_title.focus();
+          return showError('#m', new Error('공적심사의결서 제목을 입력해 주세요. (위쪽 공적심사의결서 칸의 제목)'));
+        }
+        Object.assign(d.meeting.award, { title: el.a_title.value, criteria: el.a_criteria.value });
       }
       const left = ['datetime', 'place', 'agenda', 'result', 'confirmDate', 'school']
         .filter((k) => (d.meeting[k] || '').includes('○')).length
