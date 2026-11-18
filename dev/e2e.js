@@ -51,7 +51,7 @@ const BASE = 'http://localhost:8787/exec';
     await pg.click('#f button');
     await pg.waitForSelector('#pad');
     if (i === 0) await pg.screenshot({ path: OUT + '/3-member-view.png', fullPage: true });
-    if (i % 2 === 0) {
+    {
       await pg.evaluate(() => {
         const c = document.getElementById('pad');
         const r = c.getBoundingClientRect();
@@ -61,8 +61,6 @@ const BASE = 'http://localhost:8787/exec';
         for (let k = 0; k < 30; k++) ev('pointermove', 40 + k * 9, 95 + Math.sin(k / 2.5) * 45);
         ev('pointerup', 310, 100);
       });
-    } else {
-      await pg.click('#auto');
     }
     // 동의 체크 없이 누르면 막혀야 함
     await pg.click('#sign');
@@ -70,7 +68,7 @@ const BASE = 'http://localhost:8787/exec';
     await pg.check('#agree');
     if (i === 0) { await pg.click('#sign'); console.log('no-esign msg:', await pg.textContent('#m')); }
     await pg.check('#esign');
-    if (i === 1) await (await pg.$('#signCard')).screenshot({ path: OUT + '/4-sign-card.png' });
+    if (i === 0) await (await pg.$('#signCard')).screenshot({ path: OUT + '/4-sign-card.png' });
     await pg.click('#sign');
     await pg.waitForSelector('.msg.ok', { timeout: 8000 }).catch(async (e) => {
       console.log('sign failed for member', i, ':', await pg.textContent('#m').catch(() => '?'));

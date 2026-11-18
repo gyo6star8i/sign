@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg: #f4f5f7; --card: #fff; --ink: #1d2330; --muted: #667085; --line: #d9dde5;
@@ -1095,11 +1095,10 @@
         ${done || closed ? (closed && !done ? '<div class="msg warn">서명이 마감되었습니다.</div>' : '') : `
         <div class="card" id="signCard">
           <h2>확인 서명</h2>
-          <p class="muted" style="margin-top:-6px">아래 칸에 손가락이나 마우스로 서명하세요. 서명이 어려우면 <b>이름으로 서명</b>을 누르세요.</p>
+          <p class="muted" style="margin-top:-6px">아래 칸에 손가락이나 마우스로 서명하세요.</p>
           <div class="sigpad-wrap"><canvas id="pad"></canvas><div class="sigpad-hint" id="hint">여기에 서명하세요</div></div>
           <div class="row" style="margin-top:8px">
             <button type="button" class="small" id="clear">지우기</button>
-            <button type="button" class="small" id="auto">이름으로 서명</button>
           </div>
           <label class="check"><input type="checkbox" id="agree">
             <span>위 회의록의 내용을 확인하였으며, 이에 동의하고 서명합니다.</span></label>
@@ -1123,7 +1122,6 @@
     const clearMsg = () => { const b = $('#m'); if (b) { b.className = 'hidden'; b.textContent = ''; } };
     const pad = createPad($('#pad'), () => { $('#hint').classList.add('hidden'); clearMsg(); });
     $('#clear').addEventListener('click', () => { pad.clear(); $('#hint').classList.remove('hidden'); });
-    $('#auto').addEventListener('click', async () => { await pad.drawName(r.me.name); $('#hint').classList.add('hidden'); clearMsg(); });
     $('#sign').addEventListener('click', async (e) => {
       if (pad.isEmpty()) return showError('#m', new Error('서명 칸에 서명해 주세요.'));
       if (!$('#agree').checked) return showError('#m', new Error('내용 확인 및 동의에 체크해 주세요.'));
@@ -1211,18 +1209,6 @@
     return {
       isEmpty: () => empty,
       clear() { ctx.clearRect(0, 0, canvas.width, canvas.height); empty = true; },
-      async drawName(name) {
-        const font = '"Nanum Pen Script", cursive';
-        try { if (document.fonts) await document.fonts.load(`64px ${font}`, name); } catch (e) { /* 기본 글꼴 사용 */ }
-        this.clear();
-        const w = canvas.width / ratio; const h = canvas.height / ratio;
-        let size = Math.min(h * 0.62, 96);
-        ctx.font = `${size}px ${font}`;
-        while (ctx.measureText(name).width > w * 0.8 && size > 20) { size -= 4; ctx.font = `${size}px ${font}`; }
-        ctx.fillStyle = '#111'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText(name, w / 2, h / 2);
-        empty = false;
-      },
       /** 서명 부분만 잘라 작은 PNG로 내보냅니다(시트 한 칸에 들어가는 크기). */
       export() {
         const { width, height } = canvas;
