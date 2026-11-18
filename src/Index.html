@@ -82,6 +82,20 @@
     border-radius: 50%; animation: spin .7s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
   .loading { padding: 60px 0; text-align: center; color: var(--muted); }
+  .flabel { display: block; font-size: 13px; font-weight: 500; color: var(--muted); margin-bottom: 4px; }
+  .doc-stack { width: 210mm; margin: 0 auto; }
+  .type-pick { gap: 8px; margin-bottom: 16px; }
+  .type-opt { display: flex; gap: 8px; align-items: center; padding: 9px 14px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+  .type-opt:has(input:checked) { border-color: var(--accent); background: #eef2fc; }
+  .type-opt input { margin: 0; }
+  .badge.type { background: #eef2fc; color: var(--accent); }
+  .vote-box { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin: 14px 0 4px; }
+  .vote-box b { display: block; margin-bottom: 8px; }
+  .vote-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .vote-opt { display: flex; gap: 8px; align-items: center; justify-content: center; padding: 12px; border: 2px solid var(--line);
+    border-radius: 9px; cursor: pointer; font-weight: 700; font-size: 16px; }
+  .vote-opt:has(input:checked) { border-color: var(--accent); background: #eef2fc; color: var(--accent); }
+  .vote-opt input { width: 18px; height: 18px; margin: 0; }
 </style>
 
 <!-- 회의록 양식 스타일 (화면 미리보기·인쇄·PDF 저장에 함께 쓰입니다) -->
@@ -107,8 +121,29 @@
   .doc .sign tr.r-name td, .doc .sign tr.r-name th { height: 16mm; }
   .doc .sign tr.r-sig td, .doc .sign tr.r-sig th { height: 16mm; }
   .doc .sign img { max-width: 100%; max-height: 14mm; display: block; margin: 0 auto; }
-  .doc .sign .pending { color: #999; font-size: 8pt; }
-  .doc .sign .done-mark { color: #1f8a4c; font-size: 8.5pt; }
+  .doc .pending { color: #999; font-size: 8pt; }
+  .doc .done-mark { color: #1f8a4c; font-size: 8.5pt; }
+
+  /* 공적심사의결서 */
+  .doc.award h1 { font-size: 20pt; letter-spacing: 9px; margin: 2mm 0 5mm; }
+  .doc.award .award-org { text-align: right; font-size: 11pt; font-weight: 700; margin: 0 0 1.5mm; }
+  .doc.award .award-main td, .doc.award .award-main th { text-align: center; height: 9.5mm; padding: 3px 6px; word-break: keep-all; }
+  .doc.award .award-main td.l { text-align: left; white-space: pre-wrap; }
+  .doc.award .award-main td.vote { font-size: 13pt; }
+  .doc.award .award-main td.sig { padding: 1px 2px; }
+  .doc.award .award-main td.sig img { max-width: 100%; max-height: 8.5mm; display: block; margin: 0 auto; }
+  .doc.award .award-confirm { margin-top: 9mm; }
+  .doc.award .award-confirm td { padding: 8px 12px; }
+  .doc.award .award-confirm .stmt { text-align: justify; white-space: pre-wrap; line-height: 1.8; }
+  .doc.award .award-confirm .who { text-align: center; padding: 14px 10px; }
+  .doc.award .award-confirm .who span { display: inline-block; margin: 0 2.5mm; }
+  .doc.award.fit1 .award-main td, .doc.award.fit1 .award-main th { height: 8mm; }
+  .doc.award.fit1 .award-confirm { margin-top: 5mm; }
+  .doc.award.fit2 .award-main td, .doc.award.fit2 .award-main th { height: 6.5mm; padding: 2px 5px; }
+  .doc.award.fit2 .award-main td.sig img { max-height: 6mm; }
+  .doc.award.fit3 .award-main td, .doc.award.fit3 .award-main th { height: auto; padding: 1px 4px; }
+  .doc.award.fit3 .award-main td.sig img { max-height: 5mm; }
+  .doc.award.fit3 .award-confirm { margin-top: 3mm; }
   .doc .foot { margin-top: 6mm; font-size: 8pt; color: #555; text-align: right; }
   .doc.audit h1 { font-size: 14pt; }
   .doc.audit td, .doc.audit th { font-size: 9pt; text-align: center; }
@@ -355,7 +390,65 @@
         '  - 서류심사표, 면접표 등 선발 전형 자료는 준영구 보관하기로 함',
       ],
     },
+    {
+      label: '예시5 공적심사(표창 추천)',
+      type: 'award',
+      agenda: '제○회 ○○의 날 기념 교육감 표창 대상자 추천 공적심사',
+      result: [
+        '1. 사유',
+        '  - 제○회 ○○의 날 기념 교육감 표창 대상자 추천 요청(○○교육지원청 ○○과-○○○○, ○○. ○. ○.)에 따라 공적 심사를 실시함',
+        '  - 심사 기준: 제○회 ○○의 날 기념 교육감 교원 표창 및 본교 교원 자체 공적 심사 기준',
+        '',
+        '2. 심의 내용',
+        '  - 추천 대상자: 교사 ○○○',
+        '  - 주요 공적: ○○ 교육 활성화 및 ○○ 분야 학생 지도 성과',
+        '  - 추천 제한 여부: 형사처벌, 징계 등 정부 포상 업무 지침상 추천 제한 사유 조회 결과 결격 없음',
+        '  - 본인 동의: 추천 대상자가 포상 추천에 동의함',
+        '',
+        '3. 결과',
+        '  - 교사 ○○○를 제○회 ○○의 날 기념 교육감 표창 대상자로 추천하기로 의결함',
+      ],
+    },
   ];
+
+  // ───── 공적심사의결서 ─────
+  const AWARD = 'award';
+  const AWARD_STATEMENT = '본 포상건의 포상 추천 대상자에 대하여는 형사처벌, 징계 등 정부 포상 업무 지침상 추천 제한 여부에 대한 '
+    + '조사 결과 결격이 없으며 본인이 포상에 동의하였음을 확인함.';
+  const COMMITTEE_NAME = { '': '인사자문위원회', award: '공적심사위원회' };
+
+  function defaultAward() {
+    return { title: '', criteria: '', decision: '아래와 같이 추천하기로 의결함',
+      nominees: [{ grade: '', org: '', position: '교사', name: '' }],
+      org: '', statement: AWARD_STATEMENT, confirmerPosition: '학교장', confirmerName: '' };
+  }
+
+  /** 안건 첫 줄에서 '공적심사', '추천', '대상자', '심의' 같은 꼬리말을 떼어 의결서 제목을 만듭니다. */
+  function awardTitleFrom(agenda) {
+    let t = String(agenda || '').split('\n').map((x) => x.trim()).find(Boolean) || '';
+    t = t.replace(/^(\d+[.)]\s*|[-·•]\s*)/, '');
+    const tail = /(\s*(공적\s*심사|심사|심의|의결|추천|대상자|결과|관련|안건|에\s*관한)|\s+(의|건|및))\s*$/;
+    for (let i = 0; i < 10 && tail.test(t); i++) t = t.replace(tail, '');
+    return t.trim();
+  }
+
+  /** 회의 결과에 '심사 기준:' 또는 '근거: …기준' 줄이 있으면 그것으로, 없으면 제목으로 심사 기준 문장을 만듭니다. */
+  function awardCriteriaFrom(title, result) {
+    const line = String(result || '').split('\n').map((x) => x.replace(/^\s*[-·•※]?\s*/, '').trim())
+      .find((x) => /^(심사\s*기준|근거)\s*[:：]/.test(x) && /기준/.test(x));
+    if (line) {
+      const c = line.replace(/^(심사\s*기준|근거)\s*[:：]\s*/, '').replace(/[.。]\s*$/, '');
+      return /(의거함|따름|의함)$/.test(c) ? c : c + '에 의거함';
+    }
+    if (!title) return '';
+    if (/표창\s*$/.test(title)) return `${title.replace(/\s*표창\s*$/, '')} 교원 표창 및 본교 교원 자체 공적 심사 기준에 의거함`;
+    return `${title} 관련 지침 및 본교 교원 자체 공적 심사 기준에 의거함`;
+  }
+
+  function orgFrom(school) { return (String(school || '').match(/\S+학교/) || [''])[0]; }
+  function gradeFrom(title) {
+    return (String(title || '').match(/(대통령|국무총리|장관|교육감|교육장|도지사|시장|군수|구청장)/) || ['', ''])[1];
+  }
 
   /** 오늘 날짜를 회의록 일시 형식으로: 2026. 11. 16.(월) ○○:○○~ */
   function todayWithDay() {
@@ -409,15 +502,61 @@
    * opts.showSignatures: 서명 이미지 표시 여부(관리자 출력용)
    * opts.mySignatureId: 위원 화면에서 본인 서명만 보여줄 때 본인 memberId
    */
-  function renderDoc(m, members, opts) {
-    opts = opts || {};
-    const cols = members.length;
-    const sigCell = (x) => {
+  function sigCellFn(opts) {
+    return (x) => {
       const showImg = x.signature && (opts.showSignatures || x.memberId === opts.mySignatureId);
       if (showImg) return `<img src="${esc(x.signature)}" alt="${esc(x.name)} 서명">`;
       if (opts.markSigned && (x.signed || x.signedAt)) return '<span class="done-mark">서명완료</span>';
       return opts.showPending ? '<span class="pending">미서명</span>' : '';
     };
+  }
+
+  /** 공적심사위원회: 공적심사의결서 + 회의록, 일반: 회의록만 */
+  function renderDocs(m, members, opts) {
+    return (m.type === AWARD ? renderAward(m, members, opts) : '') + renderDoc(m, members, opts);
+  }
+
+  /** 공적심사의결서. 위원 한 번의 서명이 회의록 서명표와 이 표의 '서명' 칸에 함께 들어갑니다. */
+  function renderAward(m, members, opts) {
+    opts = opts || {};
+    const a = m.award || defaultAward();
+    const noms = (a.nominees && a.nominees.length) ? a.nominees : [{}];
+    const sigCell = sigCellFn(opts);
+    const vote = (x, v) => (x.vote === v ? '○' : '');
+    return `
+      <div class="doc award">
+        <h1>공적심사의결서</h1>
+        <div class="award-org">${esc(a.org)}</div>
+        <table class="award-main">
+          <colgroup><col style="width:15%"><col style="width:11%"><col style="width:11%"><col style="width:16%">
+            <col style="width:9%"><col style="width:9%"><col></colgroup>
+          <tr><th>제목</th><td colspan="6" class="l">${esc(a.title)}</td></tr>
+          <tr><th>일시</th><td colspan="6" class="l">${esc(m.datetime)}</td></tr>
+          <tr><th>장소</th><td colspan="6" class="l">${esc(m.place)}</td></tr>
+          <tr><th>심사 기준</th><td colspan="6" class="l">${esc(a.criteria)}</td></tr>
+          <tr><th>심의 내용</th><td colspan="6">${esc(a.decision)}</td></tr>
+          <tr><th rowspan="${noms.length + 1}">심의 결과</th>
+            <td colspan="2">훈격</td><td>소속</td><td colspan="2">직위</td><td>성명</td></tr>
+          ${noms.map((n) => `<tr><td colspan="2">${esc(n.grade)}</td><td>${esc(n.org)}</td>
+            <td colspan="2">${esc(n.position)}</td><td>${esc(n.name)}</td></tr>`).join('')}
+          <tr><th rowspan="${members.length + 1}">공적심사위원</th>
+            <td colspan="2">직 위</td><td>성 명</td><td>가</td><td>부</td><td>서 명</td></tr>
+          ${members.map((x) => `<tr><td>${esc(x.role)}</td><td>${esc(x.position)}</td><td>${esc(x.name)}</td>
+            <td class="vote">${vote(x, '가')}</td><td class="vote">${vote(x, '부')}</td><td class="sig">${sigCell(x)}</td></tr>`).join('')}
+        </table>
+        <table class="award-confirm">
+          <tr><td class="stmt">${esc(a.statement)}</td></tr>
+          <tr><td class="who">확인자: <span>${esc(a.org)}</span> <span>직위(급)</span> <span>${esc(a.confirmerPosition)}</span>
+            <span>성명</span> <span>${esc(a.confirmerName)}</span></td></tr>
+        </table>
+        ${opts.footer ? `<div class="foot">${esc(opts.footer)}</div>` : ''}
+      </div>`;
+  }
+
+  function renderDoc(m, members, opts) {
+    opts = opts || {};
+    const cols = members.length;
+    const sigCell = sigCellFn(opts);
     const row = (cls, label, cell) =>
       `<tr class="${cls}"><th>${label}</th>${members.map((x) => `<td>${cell(x)}</td>`).join('')}</tr>`;
     return `
@@ -471,15 +610,16 @@
           <tr><th>작성 / 최종 수정</th><td style="text-align:left">${esc(m.createdAt)} / ${esc(m.updatedAt)}</td></tr>
           <tr><th>문서 확인값(SHA-256)</th><td style="text-align:left" class="hash">${esc(docHash)}</td></tr>
           <tr><th>본인 확인 방법</th><td style="text-align:left">위원별 개별 링크 + 관리자가 발급한 6자리 비밀번호 (5회 오류 시 잠금)</td></tr>
-          <tr><th>서명 방식</th><td style="text-align:left">내용 확인·동의 및 전자서명 사용 동의 후 서명 이미지 입력</td></tr>
+          <tr><th>서명 방식</th><td style="text-align:left">내용 확인·동의 및 전자서명 사용 동의 후 서명 이미지 입력${m.type === AWARD
+            ? ' (공적심사위원회: 위원별 가/부 의결 후 1회 서명, 공적심사의결서와 회의록에 같은 서명 표시)' : ''}</td></tr>
         </table>
         <table>
-          <tr><th style="width:5%">번호</th><th style="width:11%">구분</th><th style="width:11%">성명</th><th style="width:17%">최초 열람</th>
+          <tr><th style="width:5%">번호</th><th style="width:11%">구분</th><th style="width:11%">성명</th>${m.type === AWARD ? '<th style="width:6%">의결</th>' : ''}<th style="width:17%">최초 열람</th>
             <th style="width:17%">서명 일시</th><th style="width:21%">서명 기기</th><th>서명 당시 문서 확인값</th></tr>
           ${members.map((x, i) => {
             const sl = signLog(x.memberId);
             const mismatch = x.docHash && x.docHash !== docHash;
-            return `<tr><td>${i + 1}</td><td>${esc(x.role)}</td><td>${esc(x.name)}</td><td>${esc(firstView(x.memberId) || '-')}</td>
+            return `<tr><td>${i + 1}</td><td>${esc(x.role)}</td><td>${esc(x.name)}</td>${m.type === AWARD ? `<td>${esc(x.vote || '-')}</td>` : ''}<td>${esc(firstView(x.memberId) || '-')}</td>
               <td>${esc(x.signedAt || '미서명')}</td><td>${esc(x.signedAt ? devOf(sl) : '-')}</td>
               <td class="hash">${esc(x.docHash ? x.docHash.slice(0, 16) + '…' : '-')}${mismatch ? ' <b>(불일치)</b>' : x.docHash ? ' (일치)' : ''}</td></tr>`;
           }).join('')}
@@ -536,7 +676,7 @@
           box.innerHTML = `<b>원본과 일치합니다.</b> 서명 이후 바뀌지 않은 원본 PDF입니다.<br>
             문서: ${esc(r.title)} (${esc(r.school)})<br>확인 날짜: ${esc(r.confirmDate)} · 원본 저장: ${esc(r.createdAt)}
             ${r.purged ? ' · 클라우드 데이터 파기됨' : ''}<br>
-            서명: ${r.signers.map((x) => `${esc(x.name)}(${x.signedAt ? esc(x.signedAt) : '미서명'})`).join(', ')}
+            서명: ${r.signers.map((x) => `${esc(x.name)}(${x.vote ? esc(x.vote) + ', ' : ''}${x.signedAt ? esc(x.signedAt) : '미서명'})`).join(', ')}
             <div class="muted" style="margin-top:6px;word-break:break-all">파일 확인값 ${esc(sha)}</div>`;
         } else {
           box.className = 'msg err';
@@ -645,7 +785,7 @@
             <tr><th>회의록</th><th>확인 날짜</th><th>서명</th><th>상태</th></tr>
             ${list.map((x) => `
               <tr class="click" data-id="${esc(x.id)}">
-                <td><b>${esc(x.title)}</b><div class="muted">${esc(x.datetime)}</div></td>
+                <td><b>${esc(x.title)}</b>${x.type === AWARD ? ' <span class="badge type">공적심사</span>' : ''}<div class="muted">${esc(x.datetime)}</div></td>
                 <td>${esc(x.confirmDate)}</td>
                 <td><span class="progress"><i style="width:${x.total ? Math.round(x.signed / x.total * 100) : 0}%"></i></span>
                   <span class="muted">${x.signed}/${x.total}</span></td>
@@ -673,6 +813,7 @@
     return {
       title: `${y} 인사자문위원회 회의록`, datetime: '', place: '', committee: '인사자문위원회',
       agenda: '', result: '1. 사유: \n\n2. 결과: \n  - ', confirmDate: todayKo(), school: `○○초등학교 ${y} 인사자문위원회`,
+      type: '', award: null,
     };
   }
 
@@ -703,6 +844,10 @@
         <form id="f">
           <div class="card">
             <h2>회의 정보</h2>
+            <div class="row type-pick">
+              <label class="type-opt"><input type="radio" name="mtype" value=""> 일반 회의록</label>
+              <label class="type-opt"><input type="radio" name="mtype" value="award"> 공적심사위원회 <span class="muted">(공적심사의결서 + 회의록)</span></label>
+            </div>
             <div style="margin:-4px 0 14px">
               <div class="muted" style="margin-bottom:6px">예시 불러오기 <span style="font-weight:400">(2026 계약제교원 운영 지침 기준, ○ 부분을 고쳐 쓰세요)</span></div>
               <div class="row">${TEMPLATES.map((t, i) => `<button type="button" class="small" data-tpl="${i}">${esc(t.label)}</button>`).join('')}</div>
@@ -718,6 +863,28 @@
             <div class="grid2">
               <label class="f"><span>확인 날짜 ("위 사실을 확인함" 아래)</span><input type="text" name="confirmDate" placeholder="예: 2026. 10. 10."></label>
               <label class="f"><span>학교·위원회 이름 (날짜 아래 큰 글씨)</span><input type="text" name="school" placeholder="예: ○○초등학교 2026 인사자문위원회"></label>
+            </div>
+          </div>
+          <div class="card hidden" id="awardCard">
+            <h2>공적심사의결서</h2>
+            <p class="muted" style="margin-top:-6px">회의록 바로 앞 쪽에 출력됩니다. 일시·장소는 회의록과 같고, 제목과 심사 기준은 안건·회의 결과에서 자동으로 만들어집니다(직접 고쳐도 됩니다).
+              위원은 서명할 때 가/부를 고르고, 서명 한 번이 의결서와 회의록에 함께 들어갑니다.</p>
+            <div class="row" style="margin-bottom:12px"><button type="button" class="small" id="awardAuto">안건·회의 결과에서 다시 만들기</button></div>
+            <label class="f"><span>제목</span><input type="text" name="a_title" placeholder="예: 제59회 과학의 날 기념 교육감 표창"></label>
+            <label class="f"><span>심사 기준</span><textarea name="a_criteria" rows="2" style="min-height:60px"></textarea></label>
+            <label class="f"><span>심의 내용</span><input type="text" name="a_decision"></label>
+            <div style="margin-bottom:12px"><span class="flabel">심의 결과 (추천 대상자)</span>
+              <div class="table-scroll"><table class="list members-edit">
+                <thead><tr><th>훈격</th><th>소속</th><th>직위</th><th>성명</th><th style="width:44px"></th></tr></thead>
+                <tbody id="nrows"></tbody>
+              </table></div>
+              <button type="button" class="small" id="addNom" style="margin-top:6px">+ 대상자 추가</button>
+            </div>
+            <label class="f"><span>학교명 (오른쪽 위, 확인자 소속)</span><input type="text" name="a_org" placeholder="예: 구미초등학교"></label>
+            <label class="f"><span>확인 문구</span><textarea name="a_statement" rows="3" style="min-height:70px"></textarea></label>
+            <div class="grid2">
+              <label class="f"><span>확인자 직위(급)</span><input type="text" name="a_confirmerPosition"></label>
+              <label class="f"><span>확인자 성명</span><input type="text" name="a_confirmerName" placeholder="예: 임지선"></label>
             </div>
           </div>
           <div class="card">
@@ -744,18 +911,85 @@
       .forEach((k) => { form.elements[k].value = m[k] || ''; });
     fill(meeting);
 
+    // ── 회의 종류 / 공적심사의결서 ──
+    const el = form.elements;
+    const AWARD_KEYS = ['title', 'criteria', 'decision', 'org', 'statement', 'confirmerPosition', 'confirmerName'];
+    const nbody = $('#nrows');
+    const addNom = (n) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = ['grade', 'org', 'position', 'name'].map((k) =>
+        `<td><input type="text" data-n="${k}" value="${esc(n[k] || '')}" placeholder="${{ grade: '예: 교육감', org: '소속', position: '직위', name: '성명' }[k]}"></td>`).join('')
+        + '<td><button type="button" class="small danger" data-ndel title="삭제">✕</button></td>';
+      nbody.appendChild(tr);
+    };
+    nbody.addEventListener('click', (e) => { if (e.target.closest('[data-ndel]')) e.target.closest('tr').remove(); });
+    $('#addNom').addEventListener('click', () => addNom({ org: el.a_org.value.trim(), position: '교사' }));
+    const fillAward = (a) => {
+      a = Object.assign(defaultAward(), a || {});
+      AWARD_KEYS.forEach((k) => { el['a_' + k].value = a[k] || ''; });
+      nbody.innerHTML = '';
+      (a.nominees && a.nominees.length ? a.nominees : defaultAward().nominees).forEach(addNom);
+    };
+    const collectAward = () => {
+      const a = {};
+      AWARD_KEYS.forEach((k) => { a[k] = el['a_' + k].value; });
+      a.nominees = $all('tr', nbody).map((tr) => Object.fromEntries($all('[data-n]', tr).map((i) => [i.dataset.n, i.value])));
+      return a;
+    };
+    // 제목·심사 기준을 직접 고치기 전까지는 안건·회의 결과를 따라 자동으로 바뀝니다.
+    const auto = { title: !meeting.award, criteria: !meeting.award, org: !meeting.award };
+    const syncAward = (force) => {
+      if (force || auto.title) el.a_title.value = awardTitleFrom(el.agenda.value);
+      if (force || auto.criteria) el.a_criteria.value = awardCriteriaFrom(el.a_title.value.trim(), el.result.value);
+      const prevOrg = el.a_org.value.trim();
+      if (force || auto.org || !prevOrg) el.a_org.value = orgFrom(el.school.value);
+      // 추천 대상자의 소속·훈격도 비어 있거나 자동으로 채운 값이면 따라 바꿉니다.
+      $all('tr', nbody).forEach((tr) => {
+        const o = $('[data-n=org]', tr);
+        if (!o.value.trim() || o.value.trim() === prevOrg) o.value = el.a_org.value.trim();
+      });
+      const first = $('tr', nbody);
+      if (first) {
+        const g = $('[data-n=grade]', first);
+        if (!g.value.trim() || force) g.value = gradeFrom(el.a_title.value) || g.value;
+      }
+      if (force) { auto.title = true; auto.criteria = true; auto.org = true; }
+    };
+    el.a_org.addEventListener('input', () => { auto.org = false; });
+    el.a_title.addEventListener('input', () => {
+      auto.title = false;
+      if (auto.criteria) el.a_criteria.value = awardCriteriaFrom(el.a_title.value.trim(), el.result.value);
+    });
+    el.a_criteria.addEventListener('input', () => { auto.criteria = false; });
+    ['agenda', 'result', 'school'].forEach((k) => el[k].addEventListener('input', () => syncAward(false)));
+    $('#awardAuto').addEventListener('click', () => { syncAward(true); toast('안건·회의 결과에서 다시 만들었습니다'); });
+
+    const setType = (type, fromUser) => {
+      el.mtype.value = type;
+      $('#awardCard').classList.toggle('hidden', type !== AWARD);
+      if (!fromUser) return;
+      // '인사자문위원회' ↔ '공적심사위원회' 이름을 맞춰 바꿉니다.
+      const from = COMMITTEE_NAME[type === AWARD ? '' : AWARD]; const to = COMMITTEE_NAME[type === AWARD ? AWARD : ''];
+      ['title', 'committee', 'school'].forEach((k) => { el[k].value = el[k].value.split(from).join(to); });
+      if (type === AWARD) syncAward(false);
+    };
+    fillAward(meeting.award);
+    setType(meeting.type === AWARD ? AWARD : '', false);
+    $all('[name=mtype]').forEach((r) => r.addEventListener('change', () => setType(r.value, true)));
+
     const blank = defaultMeeting();
     $all('[data-tpl]').forEach((b) => b.addEventListener('click', () => {
       const t = TEMPLATES[Number(b.dataset.tpl)];
-      const el = form.elements;
       const touched = (el.agenda.value.trim() && el.agenda.value !== blank.agenda)
         || (el.result.value.trim() && el.result.value !== blank.result);
       if (touched && !confirm(`'${t.label}' 내용으로 안건과 회의 결과를 바꿀까요? 지금 입력한 내용은 지워집니다.`)) return;
       el.agenda.value = t.agenda;
       el.result.value = t.result.join('\n');
+      if ((t.type || '') !== el.mtype.value) setType(t.type || '', true);
+      if (t.type === AWARD) syncAward(true);
       if (!el.datetime.value.trim()) el.datetime.value = todayWithDay();
       if (!el.place.value.trim()) el.place.value = '교무회의실';
-      if (!el.committee.value.trim()) el.committee.value = '인사자문위원회';
+      if (!el.committee.value.trim()) el.committee.value = COMMITTEE_NAME[el.mtype.value] || COMMITTEE_NAME[''];
       if (!el.confirmDate.value.trim()) el.confirmDate.value = todayKo();
       toast(`${t.label}을(를) 불러왔습니다. ○ 부분을 고쳐 주세요`);
       el.result.focus();
@@ -797,6 +1031,8 @@
       try {
         const r = await busy(copyBtn, () => call('getMeeting', { token: state.adminToken, id: src }));
         fill(Object.assign({}, r.meeting, { confirmDate: todayKo() }));
+        setType(r.meeting.type === AWARD ? AWARD : '', false);
+        if (r.meeting.award) { fillAward(r.meeting.award); auto.title = false; auto.criteria = false; }
         tbody.innerHTML = '';
         r.members.forEach((x) => addRow({ role: x.role, position: x.position, name: x.name }));
         toast('불러왔습니다');
@@ -804,7 +1040,8 @@
     });
 
     const collect = () => ({
-      meeting: Object.assign({ id: id || '' }, Object.fromEntries(
+      meeting: Object.assign({ id: id || '', type: el.mtype.value === AWARD ? AWARD : '',
+        award: el.mtype.value === AWARD ? collectAward() : null }, Object.fromEntries(
         ['title', 'datetime', 'place', 'committee', 'agenda', 'result', 'confirmDate', 'school'].map((k) => [k, form.elements[k].value]))),
       members: $all('tr', tbody).map((tr) => ({
         memberId: tr.dataset.memberId,
@@ -814,7 +1051,8 @@
 
     $('#preview').addEventListener('click', () => {
       const d = collect();
-      modal(`<h2>미리보기</h2><div class="doc-frame">${renderDoc(d.meeting, d.members.filter((x) => x.name || x.role))}</div>
+      if (d.meeting.award) d.meeting.award.nominees = d.meeting.award.nominees.filter((n) => n.grade || n.org || n.position || n.name);
+      modal(`<h2>미리보기</h2><div class="doc-frame"><div class="doc-stack">${renderDocs(d.meeting, d.members.filter((x) => x.name || x.role))}</div></div>
         <div class="row end"><button data-close>닫기</button></div>`, (back) => {
         back.querySelector('.modal').style.maxWidth = '900px';
       });
@@ -823,8 +1061,13 @@
     form.addEventListener('submit', async (ev) => {
       ev.preventDefault();
       const d = collect();
+      if (d.meeting.type === AWARD && !d.meeting.award.title.trim()) {
+        el.a_title.focus();
+        return showError('#m', new Error('공적심사의결서 제목을 입력해 주세요.'));
+      }
       const left = ['datetime', 'place', 'agenda', 'result', 'confirmDate', 'school']
-        .filter((k) => (d.meeting[k] || '').includes('○')).length;
+        .filter((k) => (d.meeting[k] || '').includes('○')).length
+        + (d.meeting.award ? JSON.stringify(d.meeting.award).split('○').length - 1 : 0);
       if (left && !confirm('아직 고치지 않은 ○ 표시가 남아 있습니다. 그대로 저장할까요?')) return;
       const send = (confirmReset) => call('saveMeeting', Object.assign({ token: state.adminToken, confirmReset }, d));
       try {
@@ -875,6 +1118,7 @@
     const total = r.members.length;
     const signed = r.members.filter((x) => x.signedAt).length;
     const closed = m.status === 'closed';
+    const isAward = m.type === AWARD;
     app.innerHTML = `
       <div class="wrap">
         ${adminHeader(m.title, '<button class="small" id="back">← 목록</button>')}
@@ -893,10 +1137,11 @@
           ${closed ? '<div class="msg warn">마감된 회의록입니다. 위원이 더 이상 서명할 수 없고, 내용도 수정할 수 없습니다.</div>' : ''}
           ${(r.pdfs || []).length ? `<p class="muted" style="margin:6px 0 0">저장된 원본 PDF: ${r.pdfs.map((x) => `<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.createdAt)}</a>`).join(', ')}</p>` : ''}
           <div class="table-scroll"><table class="list" style="margin-top:8px">
-            <tr><th>#</th><th>구분</th><th>직위</th><th>성명</th><th>상태</th><th></th></tr>
+            <tr><th>#</th><th>구분</th><th>직위</th><th>성명</th>${isAward ? '<th>의결</th>' : ''}<th>상태</th><th></th></tr>
             ${r.members.map((x, i) => `
               <tr data-mid="${esc(x.memberId)}">
                 <td class="muted">${i + 1}</td><td>${esc(x.role)}</td><td>${esc(x.position)}</td><td><b>${esc(x.name)}</b></td>
+                ${isAward ? `<td>${x.vote ? `<span class="badge ${x.vote === '가' ? 'ok' : 'danger'}">${esc(x.vote)}</span>` : '<span class="muted">-</span>'}</td>` : ''}
                 <td>${x.signedAt ? `<span class="badge ok">서명완료</span> <span class="muted">${esc(x.signedAt.slice(5, 16))}</span>`
                   : x.locked ? '<span class="badge danger">잠김</span>' : '<span class="badge wait">대기</span>'}</td>
                 <td><div class="row" style="justify-content:flex-end">
@@ -907,7 +1152,7 @@
           </table></div>
           <p class="muted" style="margin-bottom:0">위원 전용 링크(비밀번호 제외): 각 위원의 <b>링크 복사</b>를 누르세요. 비밀번호를 잊은 위원은 <b>비밀번호 재발급</b>으로 새 비밀번호를 전달하세요.</p>
         </div>
-        <div class="doc-frame">${renderDoc(m, r.members, { showSignatures: true, showPending: true })}</div>
+        <div class="doc-frame"><div class="doc-stack">${renderDocs(m, r.members, { showSignatures: true, showPending: true })}</div></div>
       </div>`;
     bindLogout();
     $('#back').addEventListener('click', adminList);
@@ -981,10 +1226,18 @@
    */
   function buildPrintHtml(r, withAudit) {
     const footer = `문서번호 ${r.meeting.id.slice(0, 12)} · 문서 확인값 ${r.docHash.slice(0, 16)}`;
+    const opts = { showSignatures: true, footer };
+    // 공적심사위원회는 공적심사의결서가 회의록 바로 앞 쪽에 들어갑니다.
+    return (r.meeting.type === AWARD ? fitPage(renderAward(r.meeting, r.members, opts)) : '')
+      + fitPage(renderDoc(r.meeting, r.members, opts))
+      + (withAudit ? renderAudit(r.meeting, r.members, r.docHash, r.logs) : '');
+  }
+
+  function fitPage(docHtml) {
     const box = document.createElement('div');
     box.className = 'print-root';
     box.style.cssText = 'position:absolute;left:-10000px;top:0;width:180mm;visibility:hidden';
-    box.innerHTML = renderDoc(r.meeting, r.members, { showSignatures: true, footer });
+    box.innerHTML = docHtml;
     document.body.appendChild(box);
     const doc = box.firstElementChild;
     const limit = 262 * 96 / 25.4; // 267mm에서 약간 여유
@@ -995,7 +1248,7 @@
     }
     const html = box.innerHTML;
     box.remove();
-    return html + (withAudit ? renderAudit(r.meeting, r.members, r.docHash, r.logs) : '');
+    return html;
   }
 
   function adminPrint(r) {
@@ -1084,24 +1337,35 @@
     const m = r.meeting;
     const done = !!r.me.signedAt;
     const closed = m.status === 'closed';
-    const membersForDoc = r.members.map((x) => x.memberId === r.me.memberId ? Object.assign({}, x, { signature: r.me.signature }) : x);
+    const isAward = m.type === AWARD;
+    const membersForDoc = r.members.map((x) => x.memberId === r.me.memberId
+      ? Object.assign({}, x, { signature: r.me.signature, vote: r.me.vote }) : x);
     app.innerHTML = `
       <div class="wrap">
         <header class="top"><h1>${esc(m.title)}</h1><span class="muted">${esc(r.me.name)} 위원</span></header>
         ${done ? `<div class="msg ok">서명을 마쳤습니다 (${esc(r.me.signedAt)}). 감사합니다. 이 창은 닫으셔도 됩니다.</div>`
+          : isAward ? '<div class="msg warn">아래 <b>공적심사의결서</b>와 <b>회의록</b>을 확인하신 뒤, 맨 아래에서 가/부를 고르고 서명해 주세요.</div>'
           : '<div class="msg warn">아래 회의록 내용을 확인하신 뒤, 맨 아래에서 서명하고 <b>동의</b>를 눌러 주세요.</div>'}
         <div class="row end" style="margin-bottom:6px"><button type="button" class="small" id="zoom">${state.zoom ? '화면에 맞추기' : '크게 보기'}</button></div>
-        <div class="doc-frame" id="docFrame">${renderDoc(m, membersForDoc, { mySignatureId: r.me.memberId, markSigned: true })}</div>
+        <div class="doc-frame" id="docFrame"><div class="doc-stack">${renderDocs(m, membersForDoc, { mySignatureId: r.me.memberId, markSigned: true })}</div></div>
         ${done || closed ? (closed && !done ? '<div class="msg warn">서명이 마감되었습니다.</div>' : '') : `
         <div class="card" id="signCard">
           <h2>확인 서명</h2>
-          <p class="muted" style="margin-top:-6px">아래 칸에 손가락이나 마우스로 서명하세요.</p>
+          ${isAward ? `
+          <div class="vote-box"><b>공적심사 의결</b>
+            <div class="vote-opts">
+              <label class="vote-opt"><input type="radio" name="vote" value="가"> 가 (찬성)</label>
+              <label class="vote-opt"><input type="radio" name="vote" value="부"> 부 (반대)</label>
+            </div>
+          </div>` : ''}
+          <p class="muted" style="${isAward ? 'margin-top:12px' : 'margin-top:-6px'}">아래 칸에 손가락이나 마우스로 서명하세요.${isAward
+            ? ' 한 번 서명하면 <b>공적심사의결서</b>와 <b>회의록</b>에 함께 들어갑니다.' : ''}</p>
           <div class="sigpad-wrap"><canvas id="pad"></canvas><div class="sigpad-hint" id="hint">여기에 서명하세요</div></div>
           <div class="row" style="margin-top:8px">
             <button type="button" class="small" id="clear">지우기</button>
           </div>
           <label class="check"><input type="checkbox" id="agree">
-            <span>위 회의록의 내용을 확인하였으며, 이에 동의하고 서명합니다.</span></label>
+            <span>위 ${isAward ? '공적심사의결서와 회의록의' : '회의록의'} 내용을 확인하였으며, 이에 동의하고 서명합니다.</span></label>
           <label class="check"><input type="checkbox" id="esign">
             <span>이 전자서명을 자필 서명과 같은 서명으로 사용하는 데 동의합니다.
             <span class="muted" style="display:block;font-weight:400">「전자서명법」 제3조에 따라, 동의한 전자서명은 서명·기명날인과 같은 효력을 가집니다.
@@ -1120,15 +1384,19 @@
     if (done || closed) return;
 
     const clearMsg = () => { const b = $('#m'); if (b) { b.className = 'hidden'; b.textContent = ''; } };
+    $all('[name=vote]').forEach((x) => x.addEventListener('change', clearMsg));
     const pad = createPad($('#pad'), () => { $('#hint').classList.add('hidden'); clearMsg(); });
     $('#clear').addEventListener('click', () => { pad.clear(); $('#hint').classList.remove('hidden'); });
     $('#sign').addEventListener('click', async (e) => {
+      const voteEl = $('[name=vote]:checked');
+      if (isAward && !voteEl) return showError('#m', new Error('공적심사 의결(가/부)을 골라 주세요.'));
       if (pad.isEmpty()) return showError('#m', new Error('서명 칸에 서명해 주세요.'));
       if (!$('#agree').checked) return showError('#m', new Error('내용 확인 및 동의에 체크해 주세요.'));
       if (!$('#esign').checked) return showError('#m', new Error('전자서명 사용 동의에 체크해 주세요.'));
       const signature = pad.export();
       try {
-        const res = await busy(e.currentTarget, () => call('memberSign', { token: r.token, signature, docHash: r.docHash, consentEsign: true, device: deviceInfo() }));
+        const res = await busy(e.currentTarget, () => call('memberSign', { token: r.token, signature, docHash: r.docHash, consentEsign: true,
+          vote: voteEl ? voteEl.value : '', device: deviceInfo() }));
         state.member = Object.assign({ token: r.token }, res);
         memberView();
         window.scrollTo(0, 0);
@@ -1143,7 +1411,7 @@
   function fitDoc() {
     const frame = $('#docFrame');
     if (!frame) return;
-    const doc = $('.doc', frame);
+    const doc = $('.doc-stack', frame) || $('.doc', frame);
     doc.style.transform = '';
     doc.style.transformOrigin = 'top left';
     frame.style.height = '';

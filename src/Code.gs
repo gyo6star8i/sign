@@ -12,12 +12,12 @@ const SHEETS = {
   MEETINGS: {
     name: 'Meetings',
     headers: ['id', 'title', 'datetime', 'place', 'committee', 'agenda', 'result',
-      'confirmDate', 'school', 'status', 'createdAt', 'updatedAt'],
+      'confirmDate', 'school', 'status', 'createdAt', 'updatedAt', 'type', 'award'],
   },
   MEMBERS: {
     name: 'Members',
     headers: ['meetingId', 'memberId', 'order', 'role', 'position', 'name',
-      'pwHash', 'salt', 'signedAt', 'signature', 'docHash', 'failCount', 'code'],
+      'pwHash', 'salt', 'signedAt', 'signature', 'docHash', 'failCount', 'code', 'vote'],
   },
   LOG: {
     name: 'Log',
@@ -47,6 +47,9 @@ function shortLinkBase() {
 const CODE_CHARS = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ'; // 헷갈리는 0/O, 1/I 제외
 
 const MEETING_FIELDS = ['title', 'datetime', 'place', 'committee', 'agenda', 'result', 'confirmDate', 'school'];
+// 회의 종류: '' = 일반 회의록, 'award' = 공적심사위원회(회의록 앞에 공적심사의결서가 붙고, 위원이 가/부를 고름)
+const AWARD = 'award';
+const VOTES = ['가', '부'];
 const ADMIN_TTL = 6 * 60 * 60;   // 관리자 로그인 유지: 6시간
 const MEMBER_TTL = 2 * 60 * 60;  // 위원 로그인 유지: 2시간
 const MAX_MEMBER_FAILS = 5;      // 위원 비밀번호 5회 틀리면 잠금
@@ -168,7 +171,7 @@ function listMeetings(p) {
       const ms = members.filter((x) => x.meetingId === m.id);
       return {
         id: m.id, title: m.title, datetime: m.datetime, confirmDate: m.confirmDate,
-        status: m.status, createdAt: m.createdAt,
+        status: m.status, createdAt: m.createdAt, type: m.type || '',
         total: ms.length, signed: ms.filter((x) => x.signedAt).length,
       };
     })
@@ -181,7 +184,7 @@ function getMeeting(p) {
   ensureCodes(p.id);
   const members = membersOf(p.id).map((m) => ({
     code: m.code, memberId: m.memberId, order: Number(m.order), role: m.role, position: m.position, name: m.name,
-    signedAt: m.signedAt, signature: m.signature, docHash: m.docHash,
+    signedAt: m.signedAt, signature: m.signature, docHash: m.docHash, vote: m.vote || '',
     locked: Number(m.failCount || 0) >= MAX_MEMBER_FAILS,
   }));
   const logs = readAll(SHEETS.LOG).filter((l) => l.meetingId === p.id)
@@ -223,6 +226,9 @@ function saveMeeting(p) {
     }
     const before = isNew ? null : docHash(meeting, membersOf(meeting.id));
     MEETING_FIELDS.forEach((f) => { meeting[f] = cleanMultiline(input[f]); });
+    meeting.type = input.type === AWARD ? AWARD : '';
+    meeting.award = meeting.type === AWARD ? JSON.stringify(cleanAward(input.award)) : '';
+    if (meeting.type === AWARD && !JSON.parse(meeting.award).title) throw new Error('공적심사의결서 제목을 입력해 주세요.');
     meeting.updatedAt = now;
 
     const existing = isNew ? [] : membersOf(meeting.id);
@@ -242,7 +248,7 @@ function saveMeeting(p) {
       const row = {
         meetingId: meeting.id, memberId: newId(), order: i + 1,
         role: m.role, position: m.position, name: m.name,
-        pwHash: hash(salt, pw), salt, signedAt: '', signature: '', docHash: '', failCount: 0,
+        pwHash: hash(salt, pw), salt, signedAt: '', signature: '', docHash: '', failCount: 0, vote: '',
         code: newCode(usedCodes),
       };
       issued.push({ memberId: row.memberId, code: row.code, name: row.name, password: pw });
@@ -259,7 +265,7 @@ function saveMeeting(p) {
         err.code = 'SIGNED_EXISTS';
         throw err;
       }
-      nextMembers.forEach((m) => { m.signedAt = ''; m.signature = ''; m.docHash = ''; });
+      nextMembers.forEach((m) => { m.signedAt = ''; m.signature = ''; m.docHash = ''; m.vote = ''; });
       signaturesReset = true;
     }
 
@@ -317,6 +323,7 @@ function resetSignature(p) {
     member.signedAt = '';
     member.signature = '';
     member.docHash = '';
+    member.vote = '';
     updateMember(member);
     log(p.meetingId, p.memberId, 'reset-signature', member.name);
     return true;
@@ -338,7 +345,8 @@ function savePdf(p) {
   // 원본 확인용 지문: 나중에 누가 PDF 파일을 올리면 이 값과 비교해 위변조 여부를 확인합니다.
   const sha256 = toHex(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, blob.getBytes()));
   const dh = docHash(meeting, membersOf(meeting.id));
-  const signers = membersOf(meeting.id).map((m) => ({ name: m.name, role: m.role, signedAt: m.signedAt }));
+  const signers = membersOf(meeting.id).map((m) => Object.assign({ name: m.name, role: m.role, signedAt: m.signedAt },
+    meeting.type === AWARD ? { vote: m.vote || '' } : {}));
   appendObj(getSheet(SHEETS.PDFS), SHEETS.PDFS, {
     meetingId: meeting.id, fileId: file.getId(), name: file.getName(), sha256, docHash: dh, createdAt: nowStr(),
     title: meeting.title, school: meeting.school, confirmDate: meeting.confirmDate, signers: JSON.stringify(signers),
@@ -464,12 +472,16 @@ function memberSign(p) {
       throw new Error('회의록 내용이 그사이 수정되었습니다. 새로고침 후 다시 확인해 주세요.');
     }
     if (p.consentEsign !== true) throw new Error('전자서명 사용에 동의해 주세요.');
+    const isAward = meeting.type === AWARD;
+    if (isAward && VOTES.indexOf(p.vote) < 0) throw new Error('공적심사 의결(가/부)을 골라 주세요.');
     member.signedAt = nowStr();
     member.signature = sig;
     member.docHash = h;
+    member.vote = isAward ? p.vote : '';
     updateMember(member);
     log(meeting.id, member.memberId, 'sign',
-      `${member.name} / 내용 확인·동의, 전자서명 사용 동의 / 문서확인값 ${h.slice(0, 16)} / ${device(p)}`);
+      `${member.name} / 내용 확인·동의, 전자서명 사용 동의${isAward ? ` / 의결 ${member.vote}(공적심사의결서·회의록 서명)` : ''}`
+      + ` / 문서확인값 ${h.slice(0, 16)} / ${device(p)}`);
     // 모든 위원이 서명하면 자동으로 마감해 더 이상 바뀌지 않게 합니다.
     if (members.every((m) => m.memberId === member.memberId || m.signedAt)) {
       meeting.status = 'closed';
@@ -486,7 +498,7 @@ function memberView(meeting, member) {
   return {
     meeting: publicMeeting(meeting),
     me: { memberId: member.memberId, name: member.name, role: member.role, position: member.position,
-      signedAt: member.signedAt, signature: member.signature },
+      signedAt: member.signedAt, signature: member.signature, vote: member.vote || '' },
     // 다른 위원의 서명 이미지는 보여주지 않고, 서명 여부만 알려줍니다.
     members: members.map((m) => ({ memberId: m.memberId, role: m.role, position: m.position, name: m.name,
       signed: !!m.signedAt })),
@@ -499,7 +511,34 @@ function memberView(meeting, member) {
 function publicMeeting(m) {
   const out = { id: m.id, status: m.status, createdAt: m.createdAt, updatedAt: m.updatedAt };
   MEETING_FIELDS.forEach((f) => { out[f] = m[f] || ''; });
+  out.type = m.type === AWARD ? AWARD : '';
+  out.award = out.type === AWARD ? awardOf(m) : null;
   return out;
+}
+
+/** 공적심사의결서 입력값 정리(항목 순서를 고정해 문서 확인값이 항상 같게 나오도록 합니다). */
+function cleanAward(a) {
+  a = a || {};
+  return {
+    title: clean(a.title),
+    criteria: cleanMultiline(a.criteria),
+    decision: clean(a.decision),
+    nominees: (Array.isArray(a.nominees) ? a.nominees : [])
+      .map((n) => ({ grade: clean(n && n.grade), org: clean(n && n.org), position: clean(n && n.position), name: clean(n && n.name) }))
+      .filter((n) => n.grade || n.org || n.position || n.name),
+    org: clean(a.org),
+    statement: cleanMultiline(a.statement),
+    confirmerPosition: clean(a.confirmerPosition),
+    confirmerName: clean(a.confirmerName),
+  };
+}
+
+function awardOf(meeting) {
+  let a = meeting.award || {};
+  if (typeof a === 'string') {
+    try { a = JSON.parse(a); } catch (e) { a = {}; /* 손상된 값은 빈 값으로 */ }
+  }
+  return cleanAward(a);
 }
 
 /** 회의록 내용(본문+위원 명단)의 지문. 위원이 어떤 내용에 서명했는지 확인하는 데 씁니다. */
@@ -509,6 +548,8 @@ function docHash(meeting, members) {
     m: members.slice().sort((a, b) => Number(a.order) - Number(b.order))
       .map((m) => [String(m.memberId), String(m.role), String(m.position), String(m.name)]),
   };
+  // 공적심사의결서 내용도 서명 대상에 포함합니다(일반 회의록은 예전과 같은 값이 나오도록 이 항목을 넣지 않음).
+  if (meeting.type === AWARD) body.a = awardOf(meeting);
   return toHex(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, JSON.stringify(body),
     Utilities.Charset.UTF_8));
 }
