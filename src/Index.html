@@ -26,6 +26,8 @@
   input[type=text], input[type=password], textarea, select {
     width: 100%; padding: 9px 11px; border: 1px solid var(--line); border-radius: 7px; font: inherit; background: #fff; color: inherit; }
   textarea { resize: vertical; min-height: 90px; }
+  /* 아이폰은 16px보다 작은 입력칸을 누르면 화면을 확대하고, 웹 앱 틀 안에서는 터치 위치가 어긋난 채 남을 수 있어 16px로 둡니다. */
+  @media (max-width: 820px), (pointer: coarse) { input[type=text], input[type=password], textarea, select { font-size: 16px; } }
   input:focus, textarea:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: var(--accent); }
   .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
   @media (max-width: 640px) { .grid2 { grid-template-columns: 1fr; } }
@@ -1341,7 +1343,10 @@
       try {
         const r = await busy($('#f button'), () => call('memberLogin', { meetingId: P.m, memberId, password: $('#pw').value, device: deviceInfo() }));
         state.member = r;
+        // 키보드를 닫고 화면 위치를 처음으로 돌린 뒤 회의록을 그립니다(휴대폰에서 터치 위치가 어긋나지 않게).
+        if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
         memberView();
+        window.scrollTo(0, 0);
       } catch (e) { showError('#m', e); }
     });
   }
@@ -1474,13 +1479,19 @@
     window.addEventListener('resize', resize);
     // 구글 웹 앱 화면(iframe)은 불러온 뒤에 크기가 바뀔 수 있어, 칸 크기가 바뀌면 바로 맞춥니다.
     if (window.ResizeObserver) new ResizeObserver(() => resize()).observe(canvas);
+    // 화면을 내려 서명 칸이 보이는 순간에도 한 번 더 맞춥니다.
+    if (window.IntersectionObserver) new IntersectionObserver((es) => { if (es.some((x) => x.isIntersecting)) resize(); }).observe(canvas);
+    if (window.visualViewport) window.visualViewport.addEventListener('resize', resize);
     // 일부 휴대폰 브라우저에서 터치가 화면 스크롤로 넘어가지 않게 막습니다.
     ['touchstart', 'touchmove'].forEach((t) => canvas.addEventListener(t, (e) => e.preventDefault(), { passive: false }));
 
     // 칸의 실제 크기와 그림 크기가 다르면 좌표를 그 비율로 맞춥니다(획이 엉뚱한 곳에 그려지거나 안 보이는 문제 방지).
     const pos = (e) => {
+      const cw = canvas.clientWidth; const ch = canvas.clientHeight;
+      const sx = cw ? canvas.width / ratio / cw : 1; const sy = ch ? canvas.height / ratio / ch : 1;
+      // 브라우저가 계산한 칸 안의 위치(offsetX)를 우선 씁니다. 화면 확대·키보드로 화면 좌표가 어긋나도 정확합니다.
+      if (e.target === canvas && typeof e.offsetX === 'number') return { x: e.offsetX * sx, y: e.offsetY * sy };
       const r = canvas.getBoundingClientRect();
-      const sx = r.width ? canvas.width / ratio / r.width : 1; const sy = r.height ? canvas.height / ratio / r.height : 1;
       return { x: (e.clientX - r.left) * sx, y: (e.clientY - r.top) * sy };
     };
     canvas.addEventListener('pointerdown', (e) => {
