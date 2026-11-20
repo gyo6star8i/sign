@@ -177,4 +177,5 @@ node dev/server.js
 node dev/e2e.js /tmp
 node dev/e2e-award.js /tmp   # 공적심사위원회 흐름
 node dev/e2e-absence.js /tmp # 불참 처리, 성원·의결 계산
+node dev/e2e-long.js /tmp 70 # 회의록이 길 때 원본·회의록만 PDF 쪽 수
 ```
