@@ -704,7 +704,7 @@
         <table>
           ${colgroup(m.type === AWARD ? [7, 9, 9, 6, 15, 15, 19, 20] : [7, 10, 10, 16, 16, 20, 21])}
           <tr><th>번호</th><th>구분</th><th>성명</th>${m.type === AWARD ? '<th>의결</th>' : ''}<th>최초 열람</th>
-            <th>서명 일시</th><th>서명 기기</th><th>서명 당시 확인값</th></tr>
+            <th>서명 일시</th><th>서명 기기</th><th>서명 당시 문서 확인값</th></tr>
           ${members.map((x, i) => {
             const sl = signLog(x.memberId);
             const mismatch = x.docHash && x.docHash !== docHash;
