@@ -359,8 +359,10 @@ function savePdf(p) {
   const meeting = findMeeting(p.meetingId);
   const html = String(p.html || '');
   if (!html) throw new Error('PDF로 만들 내용이 없습니다.');
-  const date = String(meeting.confirmDate || nowStr().slice(0, 10)).replace(/\.\s*$/, '');
-  const name = `${meeting.title || '회의록'}_${date}.pdf`
+  // 파일명: 붙임-위원회 이름 회의록(저장 날짜 yyMMdd). 예: 붙임-인사관리위원회 회의록(261120).pdf
+  const committee = clean(meeting.committee) || '';
+  const yymmdd = Utilities.formatDate(new Date(), Session.getScriptTimeZone() || 'Asia/Seoul', 'yyMMdd');
+  const name = `붙임-${committee ? committee + ' 회의록' : (meeting.title || '회의록')}(${yymmdd}).pdf`
     .replace(/[\\/:*?"<>|]/g, '_');
   const blob = HtmlService.createHtmlOutput(html).getBlob().getAs('application/pdf').setName(name);
   const folder = getPdfFolder();

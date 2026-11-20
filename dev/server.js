@@ -70,7 +70,11 @@ const gas = {
     DigestAlgorithm: { SHA_256: 'sha256' }, Charset: { UTF_8: 'utf8' },
     computeDigest: (alg, s) => Array.from(crypto.createHash(alg).update(Array.isArray(s) ? Buffer.from(s.map((b) => b & 255)) : Buffer.from(String(s), 'utf8')).digest()).map((b) => (b > 127 ? b - 256 : b)),
     getUuid: () => crypto.randomUUID(),
-    formatDate: (d) => new Date(d.getTime() + 9 * 3600e3).toISOString().replace('T', ' ').slice(0, 19),
+    formatDate: (d, tz, fmt) => {
+      const iso = new Date(d.getTime() + 9 * 3600e3).toISOString(); // 서울 시간
+      if (fmt === 'yyMMdd') return iso.slice(2, 4) + iso.slice(5, 7) + iso.slice(8, 10);
+      return iso.replace('T', ' ').slice(0, 19);
+    },
   },
   Session: { getScriptTimeZone: () => 'Asia/Seoul' },
   ScriptApp: { getService: () => ({ getUrl: () => BASE }) },

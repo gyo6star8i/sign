@@ -1385,6 +1385,15 @@
     return html;
   }
 
+  /** PDF 파일명(확장자 제외): 붙임-위원회 이름 회의록(저장 날짜 yyMMdd) */
+  function pdfBaseName(m) {
+    const d = new Date();
+    const yymmdd = String(d.getFullYear() % 100).padStart(2, '0') + String(d.getMonth() + 1).padStart(2, '0')
+      + String(d.getDate()).padStart(2, '0');
+    const committee = String(m.committee || '').replace(/\s+/g, ' ').trim();
+    return `붙임-${committee ? committee + ' 회의록' : (m.title || '회의록')}(${yymmdd})`.replace(/[\\/:*?"<>|]/g, '_');
+  }
+
   function adminPrint(r) {
     const total = r.members.filter((x) => !x.absence || x.signedAt).length;
     const signed = r.members.filter((x) => x.signedAt).length;
@@ -1410,7 +1419,15 @@
         const imgs = $all('img', area);
         Promise.all(imgs.map((img) => img.complete ? 0 : new Promise((ok) => { img.onload = img.onerror = ok; })))
           .then(() => (document.fonts ? document.fonts.ready : 0))
-          .then(() => setTimeout(() => window.print(), 50));
+          .then(() => setTimeout(() => {
+            // 'PDF로 저장' 파일명은 페이지 제목을 따릅니다: 붙임-인사관리위원회 회의록(261120)
+            const oldTitle = document.title;
+            document.title = pdfBaseName(r.meeting);
+            const restore = () => { document.title = oldTitle; window.removeEventListener('afterprint', restore); };
+            window.addEventListener('afterprint', restore);
+            window.print();
+            setTimeout(restore, 1000);
+          }, 50));
       });
       $('#drive', back).addEventListener('click', async (e) => {
         const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${$('#doc-css').textContent}
