@@ -124,8 +124,9 @@
   .doc .sign th { width: 13%; font-weight: 400; text-align: center; }
   .doc .sign td { text-align: center; padding: 4px 2px; word-break: keep-all; }
   .doc .sign tr.r-role td, .doc .sign tr.r-role th { height: 11mm; border-bottom: 3px double #000; }
-  .doc .sign tr.r-pos td, .doc .sign tr.r-pos th { height: 16mm; }
-  .doc .sign tr.r-name td, .doc .sign tr.r-name th { height: 16mm; }
+  /* 직위·성명 줄은 확인서명 줄의 70% 높이 */
+  .doc .sign tr.r-pos td, .doc .sign tr.r-pos th { height: 11mm; }
+  .doc .sign tr.r-name td, .doc .sign tr.r-name th { height: 11mm; }
   .doc .sign tr.r-sig td, .doc .sign tr.r-sig th { height: 16mm; }
   .doc .sign img { max-width: 100%; max-height: 14mm; display: block; margin: 0 auto; }
   .doc .pending { color: #999; font-size: 8pt; }
@@ -170,7 +171,7 @@
   .doc.fit1 .confirm { margin: 5mm 0 2mm; }
   .doc.fit1 .date, .doc.fit1 .school { margin-bottom: 3mm; }
   .doc.fit1 .sign tr.r-pos td, .doc.fit1 .sign tr.r-pos th,
-  .doc.fit1 .sign tr.r-name td, .doc.fit1 .sign tr.r-name th,
+  .doc.fit1 .sign tr.r-name td, .doc.fit1 .sign tr.r-name th { height: 9mm; }
   .doc.fit1 .sign tr.r-sig td, .doc.fit1 .sign tr.r-sig th { height: 13mm; }
   .doc.fit1 .sign tr.r-role td, .doc.fit1 .sign tr.r-role th { height: 9mm; }
   .doc.fit1 .sign img { max-height: 12mm; }
@@ -184,7 +185,7 @@
   .doc.fit2 .date { font-size: 14pt; margin-bottom: 2mm; }
   .doc.fit2 .school { font-size: 15pt; margin-bottom: 3mm; }
   .doc.fit2 .sign tr.r-pos td, .doc.fit2 .sign tr.r-pos th,
-  .doc.fit2 .sign tr.r-name td, .doc.fit2 .sign tr.r-name th,
+  .doc.fit2 .sign tr.r-name td, .doc.fit2 .sign tr.r-name th { height: 7.5mm; }
   .doc.fit2 .sign tr.r-sig td, .doc.fit2 .sign tr.r-sig th { height: 11mm; }
   .doc.fit2 .sign tr.r-role td, .doc.fit2 .sign tr.r-role th { height: 8mm; }
   .doc.fit2 .sign img { max-height: 10mm; }
@@ -198,7 +199,7 @@
   .doc.fit3 .date { font-size: 12pt; margin-bottom: 1mm; }
   .doc.fit3 .school { font-size: 13pt; margin-bottom: 2mm; }
   .doc.fit3 .sign tr.r-pos td, .doc.fit3 .sign tr.r-pos th,
-  .doc.fit3 .sign tr.r-name td, .doc.fit3 .sign tr.r-name th,
+  .doc.fit3 .sign tr.r-name td, .doc.fit3 .sign tr.r-name th { height: 6.5mm; }
   .doc.fit3 .sign tr.r-sig td, .doc.fit3 .sign tr.r-sig th { height: 9mm; }
   .doc.fit3 .sign tr.r-role td, .doc.fit3 .sign tr.r-role th { height: 7mm; }
   .doc.fit3 .sign img { max-height: 8mm; }
