@@ -100,6 +100,16 @@ const BASE = 'http://localhost:8787/exec';
   await admin.click('#drive');
   await admin.waitForSelector('#pm.msg');
   console.log('drive:', await admin.textContent('#pm'));
+  // ① 저장 위치 선택 창이 열리는 브라우저: 가짜 창으로 이름과 내용을 받아 봅니다.
+  await admin.evaluate(() => {
+    window.showSaveFilePicker = async (o) => ({ createWritable: async () => ({
+      write: async (b) => { window.__saved = { name: o.suggestedName, size: b.length }; }, close: async () => {} }) });
+  });
+  await admin.click('#dl');
+  await admin.waitForFunction(() => window.__saved);
+  console.log('save dialog:', JSON.stringify(await admin.evaluate(() => window.__saved)));
+  // ② 구글 웹 앱 틀이 저장 창을 막는 경우: 일반 다운로드로 받아져야 합니다.
+  await admin.evaluate(() => { window.showSaveFilePicker = async () => { throw new DOMException('blocked', 'SecurityError'); }; });
   const [dl] = await Promise.all([admin.waitForEvent('download'), admin.click('#dl')]);
   const dlPath = OUT + '/downloaded.pdf';
   await dl.saveAs(dlPath);
