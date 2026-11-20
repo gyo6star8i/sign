@@ -92,6 +92,10 @@
   .type-opt:has(input:checked) { border-color: var(--accent); background: #eef2fc; }
   .type-opt input { margin: 0; }
   .badge.type { background: #eef2fc; color: var(--accent); }
+  .quorum { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: center; padding: 10px 12px; margin-top: 10px;
+    background: #f6f7f9; border-radius: 8px; font-size: 14px; }
+  .quorum b.ok { color: var(--ok); } .quorum b.no { color: var(--danger); } .quorum b.wait { color: var(--warn); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: -4px 0 12px; }
   .vote-box { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin: 14px 0 4px; }
   .vote-box b { display: block; margin-bottom: 8px; }
   .vote-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -126,6 +130,7 @@
   .doc .sign img { max-width: 100%; max-height: 14mm; display: block; margin: 0 auto; }
   .doc .pending { color: #999; font-size: 8pt; }
   .doc .done-mark { color: #1f8a4c; font-size: 8.5pt; }
+  .doc .absent { font-size: 9.5pt; letter-spacing: 1px; }
 
   /* 공적심사의결서 */
   .doc.award h1 { font-size: 20pt; letter-spacing: 9px; margin: 2mm 0 5mm; }
@@ -524,11 +529,42 @@
    */
   function sigCellFn(opts) {
     return (x) => {
+      // 불참 처리된 위원은 서명 칸에 '불참' 또는 사유를 적습니다.
+      if (x.absence && !x.signedAt && !x.signed) return `<span class="absent">${esc(x.absence)}</span>`;
       const showImg = x.signature && (opts.showSignatures || x.memberId === opts.mySignatureId);
       if (showImg) return `<img src="${esc(x.signature)}" alt="${esc(x.name)} 서명">`;
       if (opts.markSigned && (x.signed || x.signedAt)) return '<span class="done-mark">서명완료</span>';
       return opts.showPending ? '<span class="pending">미서명</span>' : '';
     };
+  }
+
+  /**
+   * 성원·의결 계산. 성원: 재적 위원 절반 이상 참석, 의결: 참석 위원 과반수 찬성.
+   * 공적심사는 가/부로, 일반 회의록은 서명(동의)으로 셉니다. 불참 처리된 위원은 참석에서 빠집니다.
+   */
+  function quorumOf(m, members) {
+    const total = members.length;
+    const absent = members.filter((x) => x.absence && !x.signedAt).length;
+    const present = total - absent;
+    const signed = members.filter((x) => x.signedAt).length;
+    const pending = present - signed;
+    const isAward = m.type === AWARD;
+    const yes = isAward ? members.filter((x) => x.signedAt && x.vote === '가').length : signed;
+    const no = isAward ? members.filter((x) => x.signedAt && x.vote === '부').length : 0;
+    const quorumOk = total > 0 && present * 2 >= total;
+    const need = Math.floor(present / 2) + 1; // 과반수
+    let result;
+    if (!quorumOk) result = { text: '성원 미달', cls: 'no' };
+    else if (yes >= need) result = { text: isAward ? '가결' : '의결(과반 동의)', cls: 'ok' };
+    else if (yes + pending >= need) result = { text: '서명 진행 중', cls: 'wait' };
+    else result = { text: isAward ? '부결' : '과반 동의 미달', cls: 'no' };
+    return { total, absent, present, signed, pending, yes, no, quorumOk, need, result, isAward };
+  }
+
+  function quorumLine(q) {
+    return `재적 ${q.total}명 · 참석 ${q.present}명${q.absent ? ` (불참 ${q.absent}명)` : ''} → 성원 ${q.quorumOk ? '충족' : '미달'}`
+      + ` · ${q.isAward ? `가 ${q.yes} / 부 ${q.no}` : `동의(서명) ${q.yes}명`}${q.pending ? ` · 미서명 ${q.pending}명` : ''}`
+      + ` → ${q.result.text}`;
   }
 
   /** 공적심사위원회: 공적심사의결서 + 회의록, 일반: 회의록만 */
@@ -609,7 +645,7 @@
   const LOG_LABEL = {
     create: '회의록 작성', update: '회의록 수정', 'issue-password': '비밀번호 발급', 'reissue-password': '비밀번호 재발급',
     login: '본인 확인·열람', 'login-fail': '비밀번호 오류', sign: '동의·서명', 'reset-signature': '서명 취소(관리자)',
-    close: '서명 마감', reopen: '서명 다시 열기', 'auto-close': '자동 마감(전원 서명)', 'save-pdf': 'PDF 원본 저장',
+    close: '서명 마감', reopen: '서명 다시 열기', absence: '불참 처리', 'absence-cancel': '불참 취소', 'auto-close': '자동 마감(전원 서명)', 'save-pdf': 'PDF 원본 저장',
   };
 
   /** 전자서명 확인 내역(감사추적) 페이지 */
@@ -630,6 +666,8 @@
           <tr><th>작성 / 최종 수정</th><td style="text-align:left">${esc(m.createdAt)} / ${esc(m.updatedAt)}</td></tr>
           <tr><th>문서 확인값(SHA-256)</th><td style="text-align:left" class="hash">${esc(docHash)}</td></tr>
           <tr><th>본인 확인 방법</th><td style="text-align:left">위원별 개별 링크 + 관리자가 발급한 6자리 비밀번호 (5회 오류 시 잠금)</td></tr>
+          <tr><th>성원·의결</th><td style="text-align:left">${esc(quorumLine(quorumOf(m, members)))}
+            <span style="font-size:8pt;color:#555">(성원: 재적 절반 이상 참석, 의결: 참석 위원 과반수 ${m.type === AWARD ? '찬성' : '동의'})</span></td></tr>
           <tr><th>서명 방식</th><td style="text-align:left">내용 확인·동의 및 전자서명 사용 동의 후 서명 이미지 입력${m.type === AWARD
             ? ' (공적심사위원회: 위원별 가/부 의결 후 1회 서명, 공적심사의결서와 회의록에 같은 서명 표시)' : ''}</td></tr>
         </table>
@@ -640,7 +678,7 @@
             const sl = signLog(x.memberId);
             const mismatch = x.docHash && x.docHash !== docHash;
             return `<tr><td>${i + 1}</td><td>${esc(x.role)}</td><td>${esc(x.name)}</td>${m.type === AWARD ? `<td>${esc(x.vote || '-')}</td>` : ''}<td>${esc(firstView(x.memberId) || '-')}</td>
-              <td>${esc(x.signedAt || '미서명')}</td><td>${esc(x.signedAt ? devOf(sl) : '-')}</td>
+              <td>${esc(x.signedAt || (x.absence ? x.absence : '미서명'))}</td><td>${esc(x.signedAt ? devOf(sl) : '-')}</td>
               <td class="hash">${esc(x.docHash ? x.docHash.slice(0, 16) + '…' : '-')}${mismatch ? ' <b>(불일치)</b>' : x.docHash ? ' (일치)' : ''}</td></tr>`;
           }).join('')}
         </table>
@@ -696,7 +734,7 @@
           box.innerHTML = `<b>원본과 일치합니다.</b> 서명 이후 바뀌지 않은 원본 PDF입니다.<br>
             문서: ${esc(r.title)} (${esc(r.school)})<br>확인 날짜: ${esc(r.confirmDate)} · 원본 저장: ${esc(r.createdAt)}
             ${r.purged ? ' · 클라우드 데이터 파기됨' : ''}<br>
-            서명: ${r.signers.map((x) => `${esc(x.name)}(${x.vote ? esc(x.vote) + ', ' : ''}${x.signedAt ? esc(x.signedAt) : '미서명'})`).join(', ')}
+            서명: ${r.signers.map((x) => `${esc(x.name)}(${x.vote ? esc(x.vote) + ', ' : ''}${x.signedAt ? esc(x.signedAt) : x.absence ? esc(x.absence) : '미서명'})`).join(', ')}
             <div class="muted" style="margin-top:6px;word-break:break-all">파일 확인값 ${esc(sha)}</div>`;
         } else {
           box.className = 'msg err';
@@ -807,8 +845,8 @@
               <tr class="click" data-id="${esc(x.id)}">
                 <td><b>${esc(x.title)}</b>${x.type === AWARD ? ' <span class="badge type">공적심사</span>' : ''}<div class="muted">${esc(x.datetime)}</div></td>
                 <td>${esc(x.confirmDate)}</td>
-                <td><span class="progress"><i style="width:${x.total ? Math.round(x.signed / x.total * 100) : 0}%"></i></span>
-                  <span class="muted">${x.signed}/${x.total}</span></td>
+                <td><span class="progress"><i style="width:${x.total - (x.absent || 0) ? Math.round(x.signed / (x.total - (x.absent || 0)) * 100) : 0}%"></i></span>
+                  <span class="muted">${x.signed}/${x.total - (x.absent || 0)}${x.absent ? ` (불참 ${x.absent})` : ''}</span></td>
                 <td>${statusBadge(x)}</td>
               </tr>`).join('')}
           </table></div>`}
@@ -821,7 +859,7 @@
 
   function statusBadge(x) {
     if (x.status === 'closed') return '<span class="badge wait">마감</span>';
-    if (x.total && x.signed === x.total) return '<span class="badge ok">서명 완료</span>';
+    if (x.total && x.signed === x.total - (x.absent || 0)) return '<span class="badge ok">서명 완료</span>';
     return '<span class="badge warn">서명 받는 중</span>';
   }
 
@@ -1139,6 +1177,29 @@
     });
   }
 
+  /** 불참 처리 창: '불참' 또는 사유(출장·연수 등)를 고르거나 직접 입력합니다. 서명 칸에 그대로 들어갑니다. */
+  function absenceDialog(mem, onSave) {
+    const chips = ['불참', '출장', '연수', '병가', '연가', '공가'];
+    modal(`
+      <h2>${esc(mem.name)} 위원 불참 처리</h2>
+      <p class="muted" style="margin-top:0">서명 칸에 들어갈 글자를 고르거나 직접 입력하세요(20자 이내). 성원·의결 계산에서 참석자로 세지 않습니다.</p>
+      <div class="chips">${chips.map((c) => `<button type="button" class="small" data-chip="${esc(c)}">${esc(c)}</button>`).join('')}</div>
+      <label class="f"><span>서명 칸 표시</span><input type="text" id="absText" maxlength="20" value="불참"></label>
+      <div id="absm" class="hidden"></div>
+      <div class="row end"><button data-close>취소</button><button class="primary" id="absSave">불참 처리</button></div>`,
+    (back, close) => {
+      const input = $('#absText', back);
+      input.select();
+      $all('[data-chip]', back).forEach((c) => c.addEventListener('click', () => { input.value = c.dataset.chip; input.focus(); }));
+      $('#absSave', back).addEventListener('click', async (e) => {
+        const reason = input.value.trim();
+        if (!reason) return showError($('#absm', back), new Error('서명 칸에 들어갈 글자를 입력해 주세요.'));
+        try { await busy(e.currentTarget, () => onSave(reason)); close(); }
+        catch (err) { if (!handleAuthError(err)) showError($('#absm', back), err); }
+      });
+    });
+  }
+
   async function adminDetail(id) {
     app.innerHTML = '<div class="loading"><span class="spinner"></span></div>';
     let r;
@@ -1150,14 +1211,16 @@
     const m = r.meeting;
     const total = r.members.length;
     const signed = r.members.filter((x) => x.signedAt).length;
+    const absent = r.members.filter((x) => x.absence && !x.signedAt).length;
     const closed = m.status === 'closed';
     const isAward = m.type === AWARD;
+    const q = quorumOf(m, r.members);
     app.innerHTML = `
       <div class="wrap">
         ${adminHeader(m.title, '<button class="small" id="back">← 목록</button>')}
         <div class="card">
           <div class="row" style="justify-content:space-between">
-            <div><b>서명 현황</b> <span class="muted">${signed}/${total}명</span> ${statusBadge({ status: m.status, total, signed })}</div>
+            <div><b>서명 현황</b> <span class="muted">${signed}/${total - absent}명${absent ? ` (불참 ${absent}명)` : ''}</span> ${statusBadge({ status: m.status, total, signed, absent })}</div>
             <div class="row">
               <button class="primary" id="print">PDF 출력</button>
               <button id="edit" ${closed ? 'disabled title="마감된 회의록은 [서명 다시 열기] 후 수정할 수 있습니다"' : ''}>내용 수정</button>
@@ -1166,7 +1229,14 @@
               <button class="danger" id="del">삭제</button>
             </div>
           </div>
-          ${signed === total && total ? '<div class="msg ok">모든 위원이 서명했습니다. <b>PDF 출력</b>으로 회의록을 저장하세요.</div>' : ''}
+          <div class="quorum">
+            <span>재적 <b>${q.total}</b>명</span><span>참석 <b>${q.present}</b>명${q.absent ? ` <span class="muted">(불참 ${q.absent})</span>` : ''}</span>
+            <span>성원 <b class="${q.quorumOk ? 'ok' : 'no'}">${q.quorumOk ? '충족' : '미달'}</b></span>
+            <span>${q.isAward ? `가 <b>${q.yes}</b> · 부 <b>${q.no}</b>` : `동의(서명) <b>${q.yes}</b>명`}${q.pending ? ` · 미서명 ${q.pending}` : ''}</span>
+            <span>결과 <b class="${q.result.cls}">${q.result.text}</b></span>
+            <span class="muted" style="font-size:12px">성원: 재적 절반 이상 참석 · 의결: 참석 ${q.present}명 중 ${q.need}명 이상 ${q.isAward ? '찬성(가)' : '동의'}</span>
+          </div>
+          ${signed === total - absent && signed ? `<div class="msg ok">${absent ? '참석 위원' : '모든 위원'}이 서명했습니다. <b>PDF 출력</b>으로 회의록을 저장하세요.</div>` : ''}
           ${closed ? '<div class="msg warn">마감된 회의록입니다. 위원이 더 이상 서명할 수 없고, 내용도 수정할 수 없습니다.</div>' : ''}
           ${(r.pdfs || []).length ? `<p class="muted" style="margin:6px 0 0">저장된 원본 PDF: ${r.pdfs.map((x) => `<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.createdAt)}</a>`).join(', ')}</p>` : ''}
           <div class="table-scroll"><table class="list" style="margin-top:8px">
@@ -1176,14 +1246,18 @@
                 <td class="muted">${i + 1}</td><td>${esc(x.role)}</td><td>${esc(x.position)}</td><td><b>${esc(x.name)}</b></td>
                 ${isAward ? `<td>${x.vote ? `<span class="badge ${x.vote === '가' ? 'ok' : 'danger'}">${esc(x.vote)}</span>` : '<span class="muted">-</span>'}</td>` : ''}
                 <td>${x.signedAt ? `<span class="badge ok">서명완료</span> <span class="muted">${esc(x.signedAt.slice(5, 16))}</span>`
+                  : x.absence ? `<span class="badge danger">${esc(x.absence)}</span>`
                   : x.locked ? '<span class="badge danger">잠김</span>' : '<span class="badge wait">대기</span>'}</td>
                 <td><div class="row" style="justify-content:flex-end">
                   ${x.signedAt ? '<button class="small danger" data-act="reset">서명 취소</button>'
-                    : '<button class="small" data-act="link">링크 복사</button>'}
+                    : x.absence ? `<button class="small" data-act="present" ${closed ? 'disabled' : ''}>불참 취소</button>`
+                    : `<button class="small" data-act="link">링크 복사</button>
+                       <button class="small" data-act="absent" ${closed ? 'disabled title="마감된 회의록은 [서명 다시 열기] 후 처리할 수 있습니다"' : ''}>불참 처리</button>`}
                   <button class="small" data-act="pw">비밀번호 재발급</button></div></td>
               </tr>`).join('')}
           </table></div>
-          <p class="muted" style="margin-bottom:0">위원 전용 링크(비밀번호 제외): 각 위원의 <b>링크 복사</b>를 누르세요. 비밀번호를 잊은 위원은 <b>비밀번호 재발급</b>으로 새 비밀번호를 전달하세요.</p>
+          <p class="muted" style="margin-bottom:0">위원 전용 링크(비밀번호 제외): 각 위원의 <b>링크 복사</b>를 누르세요. 비밀번호를 잊은 위원은 <b>비밀번호 재발급</b>으로 새 비밀번호를 전달하세요.
+            회의에 참석하지 않은 위원은 <b>불참 처리</b>를 누르면 서명 칸에 '불참'(또는 사유)이 들어가고 성원·의결 계산에서 빠집니다.</p>
         </div>
         <div class="doc-frame"><div class="doc-stack">${renderDocs(m, r.members, { showSignatures: true, showPending: true })}</div></div>
       </div>`;
@@ -1243,6 +1317,16 @@
           const res = await busy(b, () => call('reissuePassword', { token: state.adminToken, meetingId: id, memberId: mid }));
           await adminDetail(id);
           showIssued(id, [res]);
+        } else if (b.dataset.act === 'absent') {
+          absenceDialog(mem, async (reason) => {
+            await call('setAbsence', { token: state.adminToken, meetingId: id, memberId: mid, reason });
+            await adminDetail(id);
+            toast(`${mem.name} 위원: ${reason}`);
+          });
+        } else if (b.dataset.act === 'present') {
+          if (!confirm(`${mem.name} 위원의 불참 처리를 취소할까요? 다시 서명을 받을 수 있게 됩니다.`)) return;
+          await busy(b, () => call('setAbsence', { token: state.adminToken, meetingId: id, memberId: mid, reason: '' }));
+          adminDetail(id);
         } else if (b.dataset.act === 'reset') {
           if (!confirm(`${mem.name} 위원의 서명을 취소할까요? 다시 서명을 받아야 합니다.`)) return;
           await busy(b, () => call('resetSignature', { token: state.adminToken, meetingId: id, memberId: mid }));
@@ -1285,11 +1369,12 @@
   }
 
   function adminPrint(r) {
-    const total = r.members.length;
+    const total = r.members.filter((x) => !x.absence || x.signedAt).length;
     const signed = r.members.filter((x) => x.signedAt).length;
     modal(`
       <h2>PDF 출력</h2>
-      ${signed < total ? `<div class="msg warn">아직 ${total - signed}명이 서명하지 않았습니다. 빈칸으로 출력됩니다.</div>` : ''}
+      ${signed < total ? `<div class="msg warn">아직 ${total - signed}명이 서명하지 않았습니다. 빈칸으로 출력됩니다.
+        회의에 오지 않은 위원은 <b>불참 처리</b>를 하면 서명 칸에 '불참'이 들어갑니다.</div>` : ''}
       <label class="check"><input type="checkbox" id="audit" checked> 전자서명 확인 내역(서명 일시·문서 확인값) 페이지 포함</label>
       <p class="muted">• <b>인쇄 / PDF로 저장</b>: 인쇄 창에서 대상(프린터)을 <b>'PDF로 저장'</b>으로 고르면 PDF 파일이 됩니다. 양식이 가장 정확하게 나옵니다.<br>
       • <b>구글 드라이브에 저장 (원본)</b>: 드라이브의 '회의록 전자서명 PDF' 폴더에 저장하고 파일 확인값을 기록합니다.
@@ -1372,7 +1457,7 @@
     const r = state.member;
     const m = r.meeting;
     const done = !!r.me.signedAt;
-    const closed = m.status === 'closed';
+    const closed = m.status === 'closed' || (!done && !!r.me.absence);
     const isAward = m.type === AWARD;
     const membersForDoc = r.members.map((x) => x.memberId === r.me.memberId
       ? Object.assign({}, x, { signature: r.me.signature, vote: r.me.vote }) : x);
@@ -1380,11 +1465,13 @@
       <div class="wrap">
         <header class="top"><h1>${esc(m.title)}</h1><span class="muted">${esc(r.me.name)} 위원</span></header>
         ${done ? `<div class="msg ok">서명을 마쳤습니다 (${esc(r.me.signedAt)}). 감사합니다. 이 창은 닫으셔도 됩니다.</div>`
+          : r.me.absence ? ''
           : isAward ? '<div class="msg warn">아래 <b>공적심사의결서</b>와 <b>회의록</b>을 확인하신 뒤, 맨 아래에서 가/부를 고르고 서명해 주세요.</div>'
           : '<div class="msg warn">아래 회의록 내용을 확인하신 뒤, 맨 아래에서 서명하고 <b>동의</b>를 눌러 주세요.</div>'}
         <div class="row end" style="margin-bottom:6px"><button type="button" class="small" id="zoom">${state.zoom ? '화면에 맞추기' : '크게 보기'}</button></div>
         <div class="doc-frame" id="docFrame"><div class="doc-stack">${renderDocs(m, membersForDoc, { mySignatureId: r.me.memberId, markSigned: true })}</div></div>
-        ${done || closed ? (closed && !done ? '<div class="msg warn">서명이 마감되었습니다.</div>' : '') : `
+        ${done || closed ? (closed && !done ? `<div class="msg warn">${r.me.absence
+          ? `${esc(r.me.absence)}(으)로 처리되어 서명할 수 없습니다. 담당자에게 문의해 주세요.` : '서명이 마감되었습니다.'}</div>` : '') : `
         <div class="card" id="signCard">
           <h2>확인 서명</h2>
           ${isAward ? `

@@ -17,7 +17,7 @@ const SHEETS = {
   MEMBERS: {
     name: 'Members',
     headers: ['meetingId', 'memberId', 'order', 'role', 'position', 'name',
-      'pwHash', 'salt', 'signedAt', 'signature', 'docHash', 'failCount', 'code', 'vote'],
+      'pwHash', 'salt', 'signedAt', 'signature', 'docHash', 'failCount', 'code', 'vote', 'absence'],
   },
   LOG: {
     name: 'Log',
@@ -54,6 +54,7 @@ const ADMIN_TTL = 6 * 60 * 60;   // 관리자 로그인 유지: 6시간
 const MEMBER_TTL = 2 * 60 * 60;  // 위원 로그인 유지: 2시간
 const MAX_MEMBER_FAILS = 5;      // 위원 비밀번호 5회 틀리면 잠금
 const MAX_SIGNATURE_CHARS = 45000; // 시트 셀 한도(5만 자) 안쪽
+const MAX_ABSENCE_CHARS = 20;      // 불참 사유(서명 칸에 들어가는 글자)
 
 // ───────────────────────── 웹앱 진입점 ─────────────────────────
 
@@ -99,6 +100,7 @@ const ACTIONS = {
   saveMeeting,
   deleteMeeting,
   setMeetingStatus,
+  setAbsence,
   reissuePassword,
   resetSignature,
   savePdf,
@@ -173,6 +175,7 @@ function listMeetings(p) {
         id: m.id, title: m.title, datetime: m.datetime, confirmDate: m.confirmDate,
         status: m.status, createdAt: m.createdAt, type: m.type || '',
         total: ms.length, signed: ms.filter((x) => x.signedAt).length,
+        absent: ms.filter((x) => x.absence && !x.signedAt).length,
       };
     })
     .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
@@ -184,7 +187,7 @@ function getMeeting(p) {
   ensureCodes(p.id);
   const members = membersOf(p.id).map((m) => ({
     code: m.code, memberId: m.memberId, order: Number(m.order), role: m.role, position: m.position, name: m.name,
-    signedAt: m.signedAt, signature: m.signature, docHash: m.docHash, vote: m.vote || '',
+    signedAt: m.signedAt, signature: m.signature, docHash: m.docHash, vote: m.vote || '', absence: m.absence || '',
     locked: Number(m.failCount || 0) >= MAX_MEMBER_FAILS,
   }));
   const logs = readAll(SHEETS.LOG).filter((l) => l.meetingId === p.id)
@@ -248,7 +251,7 @@ function saveMeeting(p) {
       const row = {
         meetingId: meeting.id, memberId: newId(), order: i + 1,
         role: m.role, position: m.position, name: m.name,
-        pwHash: hash(salt, pw), salt, signedAt: '', signature: '', docHash: '', failCount: 0, vote: '',
+        pwHash: hash(salt, pw), salt, signedAt: '', signature: '', docHash: '', failCount: 0, vote: '', absence: '',
         code: newCode(usedCodes),
       };
       issued.push({ memberId: row.memberId, code: row.code, name: row.name, password: pw });
@@ -302,6 +305,26 @@ function setMeetingStatus(p) {
   });
 }
 
+/**
+ * 불참 처리: 서명하지 않은 위원을 불참(또는 출장·병가 등 사유)으로 표시합니다.
+ * 이 글자가 회의록·공적심사의결서의 서명 칸에 들어가고, 성원·의결 계산에서 참석자에서 빠집니다.
+ * 빈 값을 보내면 불참 처리를 취소합니다.
+ */
+function setAbsence(p) {
+  requireAdmin(p);
+  return withLock(() => {
+    const meeting = findMeeting(p.meetingId);
+    if (meeting.status === 'closed') throw new Error('마감된 회의록입니다. 먼저 [서명 다시 열기]를 눌러 주세요.');
+    const member = findMember(p.meetingId, p.memberId);
+    const reason = clean(p.reason).slice(0, MAX_ABSENCE_CHARS);
+    if (reason && member.signedAt) throw new Error('이미 서명한 위원은 불참으로 처리할 수 없습니다.');
+    member.absence = reason;
+    updateMember(member);
+    log(meeting.id, member.memberId, reason ? 'absence' : 'absence-cancel', reason ? `${member.name} / ${reason}` : member.name);
+    return true;
+  });
+}
+
 function reissuePassword(p) {
   requireAdmin(p);
   return withLock(() => {
@@ -346,7 +369,7 @@ function savePdf(p) {
   const sha256 = toHex(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, blob.getBytes()));
   const dh = docHash(meeting, membersOf(meeting.id));
   const signers = membersOf(meeting.id).map((m) => Object.assign({ name: m.name, role: m.role, signedAt: m.signedAt },
-    meeting.type === AWARD ? { vote: m.vote || '' } : {}));
+    meeting.type === AWARD ? { vote: m.vote || '' } : {}, m.absence && !m.signedAt ? { absence: m.absence } : {}));
   appendObj(getSheet(SHEETS.PDFS), SHEETS.PDFS, {
     meetingId: meeting.id, fileId: file.getId(), name: file.getName(), sha256, docHash: dh, createdAt: nowStr(),
     title: meeting.title, school: meeting.school, confirmDate: meeting.confirmDate, signers: JSON.stringify(signers),
@@ -466,6 +489,7 @@ function memberSign(p) {
     const member = members.find((m) => m.memberId === who.memberId);
     if (!member) throw new Error('위원 정보를 찾을 수 없습니다.');
     if (member.signedAt) throw new Error('이미 서명하셨습니다.');
+    if (member.absence) throw new Error(`'${member.absence}'(으)로 처리되어 서명할 수 없습니다. 담당자에게 문의해 주세요.`);
     const h = docHash(meeting, members);
     // 위원이 화면에서 본 내용과 지금 저장된 내용이 다르면(그 사이 관리자가 수정) 서명을 받지 않습니다.
     if (p.docHash && p.docHash !== h) {
@@ -482,12 +506,12 @@ function memberSign(p) {
     log(meeting.id, member.memberId, 'sign',
       `${member.name} / 내용 확인·동의, 전자서명 사용 동의${isAward ? ` / 의결 ${member.vote}(공적심사의결서·회의록 서명)` : ''}`
       + ` / 문서확인값 ${h.slice(0, 16)} / ${device(p)}`);
-    // 모든 위원이 서명하면 자동으로 마감해 더 이상 바뀌지 않게 합니다.
-    if (members.every((m) => m.memberId === member.memberId || m.signedAt)) {
+    // 불참 처리된 위원을 뺀 모든 위원이 서명하면 자동으로 마감해 더 이상 바뀌지 않게 합니다.
+    if (members.every((m) => m.memberId === member.memberId || m.signedAt || m.absence)) {
       meeting.status = 'closed';
       meeting.updatedAt = nowStr();
       upsertRow(SHEETS.MEETINGS, 'id', meeting);
-      log(meeting.id, '', 'auto-close', '모든 위원 서명 완료');
+      log(meeting.id, '', 'auto-close', members.some((m) => m.absence) ? '참석 위원 전원 서명 완료' : '모든 위원 서명 완료');
     }
     return memberView(meeting, member);
   });
@@ -498,10 +522,10 @@ function memberView(meeting, member) {
   return {
     meeting: publicMeeting(meeting),
     me: { memberId: member.memberId, name: member.name, role: member.role, position: member.position,
-      signedAt: member.signedAt, signature: member.signature, vote: member.vote || '' },
+      signedAt: member.signedAt, signature: member.signature, vote: member.vote || '', absence: member.absence || '' },
     // 다른 위원의 서명 이미지는 보여주지 않고, 서명 여부만 알려줍니다.
     members: members.map((m) => ({ memberId: m.memberId, role: m.role, position: m.position, name: m.name,
-      signed: !!m.signedAt })),
+      signed: !!m.signedAt, absence: m.signedAt ? '' : (m.absence || '') })),
     docHash: docHash(meeting, members),
   };
 }
