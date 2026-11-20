@@ -1374,23 +1374,28 @@
    * 실제로 그려 높이를 재고, 넘치면 줄간격·글자·칸 높이를 단계적으로 줄입니다(fit1~fit3).
    * 그래도 넘치면 서명 블록이 통째로 다음 쪽으로 넘어갑니다.
    */
-  function buildPrintHtml(r, withAudit) {
+  /**
+   * forDrive: 구글 드라이브 PDF용. 구글의 PDF 변환은 웹 글꼴 없이 다른 한글 글꼴로 그려 글자가 10% 남짓 커지므로,
+   * 쪽 높이를 더 작게(약 86%) 잡고 맞춥니다. 그래야 서명표가 다음 쪽으로 밀리지 않습니다.
+   */
+  function buildPrintHtml(r, withAudit, forDrive) {
+    const limitMm = forDrive ? 226 : 262;
     const footer = `문서번호 ${r.meeting.id.slice(0, 12)} · 문서 확인값 ${r.docHash.slice(0, 16)}`;
     const opts = { showSignatures: true, footer };
     // 공적심사위원회는 공적심사의결서가 회의록 바로 앞 쪽에 들어갑니다.
-    return (r.meeting.type === AWARD ? fitPage(renderAward(r.meeting, r.members, opts)) : '')
-      + fitPage(renderDoc(r.meeting, r.members, opts))
+    return (r.meeting.type === AWARD ? fitPage(renderAward(r.meeting, r.members, opts), limitMm) : '')
+      + fitPage(renderDoc(r.meeting, r.members, opts), limitMm)
       + (withAudit ? renderAudit(r.meeting, r.members, r.docHash, r.logs) : '');
   }
 
-  function fitPage(docHtml) {
+  function fitPage(docHtml, limitMm) {
     const box = document.createElement('div');
     box.className = 'print-root';
     box.style.cssText = 'position:absolute;left:-10000px;top:0;width:180mm;visibility:hidden';
     box.innerHTML = docHtml;
     document.body.appendChild(box);
     const doc = box.firstElementChild;
-    const limit = 262 * 96 / 25.4; // 267mm에서 약간 여유
+    const limit = (limitMm || 262) * 96 / 25.4; // A4 여백 안 높이 267mm에서 약간 여유
     for (const level of ['', 'fit1', 'fit2', 'fit3']) {
       doc.classList.remove('fit1', 'fit2', 'fit3');
       if (level) doc.classList.add(level);
@@ -1464,7 +1469,7 @@
           body{margin:0}
           /* 구글의 PDF 변환은 쪽 너비에 꽉 찬 표의 오른쪽 테두리를 잘라 먹으므로 표를 아주 조금 좁힙니다. */
           .print-root .doc table{width:99.4%}</style></head>
-          <body><div class="print-root">${buildPrintHtml(r, $('#audit', back).checked)}</div></body></html>`;
+          <body><div class="print-root">${buildPrintHtml(r, $('#audit', back).checked, true)}</div></body></html>`;
         try {
           const res = await busy(e.currentTarget, () => call('savePdf', { token: state.adminToken, meetingId: r.meeting.id, html }));
           const pm = $('#pm', back);
