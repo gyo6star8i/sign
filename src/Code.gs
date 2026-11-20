@@ -377,7 +377,8 @@ function savePdf(p) {
     title: meeting.title, school: meeting.school, confirmDate: meeting.confirmDate, signers: JSON.stringify(signers),
   });
   log(meeting.id, '', 'save-pdf', `${file.getName()} / 파일확인값 ${sha256.slice(0, 16)}`);
-  return { url: file.getUrl(), name: file.getName(), sha256 };
+  // 같은 파일을 PC에 바로 내려받을 수 있도록 내용도 함께 돌려줍니다(파일 이름·확인값 그대로).
+  return { url: file.getUrl(), name: file.getName(), sha256, data: Utilities.base64Encode(blob.getBytes()) };
 }
 
 /** 위변조 검증: 올린 PDF 파일의 SHA-256 값이 시스템이 저장한 원본과 같은지 확인합니다(누구나 사용 가능). */

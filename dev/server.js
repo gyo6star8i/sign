@@ -70,6 +70,7 @@ const gas = {
     DigestAlgorithm: { SHA_256: 'sha256' }, Charset: { UTF_8: 'utf8' },
     computeDigest: (alg, s) => Array.from(crypto.createHash(alg).update(Array.isArray(s) ? Buffer.from(s.map((b) => b & 255)) : Buffer.from(String(s), 'utf8')).digest()).map((b) => (b > 127 ? b - 256 : b)),
     getUuid: () => crypto.randomUUID(),
+    base64Encode: (bytes) => Buffer.from(bytes.map((b) => b & 255)).toString('base64'),
     formatDate: (d, tz, fmt) => {
       const iso = new Date(d.getTime() + 9 * 3600e3).toISOString(); // 서울 시간
       if (fmt === 'yyMMdd') return iso.slice(2, 4) + iso.slice(5, 7) + iso.slice(8, 10);
