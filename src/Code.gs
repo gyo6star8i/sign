@@ -360,9 +360,12 @@ function savePdf(p) {
   const html = String(p.html || '');
   if (!html) throw new Error('PDF로 만들 내용이 없습니다.');
   // 파일명: 붙임-위원회 이름 회의록(저장 날짜 yyMMdd). 예: 붙임-인사관리위원회 회의록(261120).pdf
+  // part 'minutes'는 전자서명 확인 내역을 뺀 내부결재용(회의록만, 공적심사는 의결서·회의록)입니다.
+  const minutesOnly = p.part === 'minutes';
   const committee = clean(meeting.committee) || '';
   const yymmdd = Utilities.formatDate(new Date(), Session.getScriptTimeZone() || 'Asia/Seoul', 'yyMMdd');
-  const name = `붙임-${committee ? committee + ' 회의록' : (meeting.title || '회의록')}(${yymmdd}).pdf`
+  const suffix = minutesOnly ? (meeting.type === AWARD ? '_의결서·회의록' : '_회의록만') : '';
+  const name = `붙임-${committee ? committee + ' 회의록' : (meeting.title || '회의록')}(${yymmdd})${suffix}.pdf`
     .replace(/[\\/:*?"<>|]/g, '_');
   const blob = HtmlService.createHtmlOutput(html).getBlob().getAs('application/pdf').setName(name);
   const folder = getPdfFolder();

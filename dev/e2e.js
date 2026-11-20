@@ -105,6 +105,12 @@ const BASE = 'http://localhost:8787/exec';
   await dl.saveAs(dlPath);
   const dlSha = require('crypto').createHash('sha256').update(require('fs').readFileSync(dlPath)).digest('hex');
   console.log('download name:', dl.suggestedFilename(), '| same as drive original:', (await admin.textContent('#pm')).includes(dlSha));
+  const [dl2] = await Promise.all([admin.waitForEvent('download'), admin.click('#dlMin')]);
+  await dl2.saveAs(OUT + '/minutes-only.pdf');
+  const minHtml = require('fs').readFileSync(OUT + '/minutes-only.pdf', 'utf8'); // 테스트 서버는 HTML을 그대로 'PDF'로 저장
+  console.log('minutes-only name:', dl2.suggestedFilename(), '| pages:', (minHtml.match(/class="doc[ "]/g) || []).length,
+    '| has audit:', minHtml.includes('doc audit'));
+  await admin.waitForSelector('#dlMinNote a');
   await admin.evaluate(() => { window.print = () => { window.__printed = true; }; });
   await admin.click('#doPrint');
   await admin.waitForFunction(() => window.__printed);
