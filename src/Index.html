@@ -1418,13 +1418,12 @@
       <p class="muted">• <b>구글 드라이브에 저장 (원본)</b>: 드라이브의 '회의록 전자서명 PDF' 폴더에 저장하고 파일 확인값을 기록합니다.
         저장 후 나오는 <b>PC에 내려받기</b>로 같은 파일을 <b>'붙임-○○위원회 회의록(날짜).pdf'</b> 이름으로 바로 받을 수 있습니다.
         <b>위변조 확인</b>이 되는 원본이라 에듀파인 첨부용으로 권장합니다.<br>
-      • <b>인쇄 / PDF로 저장</b>: 종이로 인쇄할 때 씁니다. 인쇄 창의 'PDF로 저장'은 파일 이름이 '회의록 전자서명'으로 나오고(구글 웹 앱 제한),
-        위변조 확인이 되지 않습니다.</p>
+      • <b>인쇄</b>: 종이로 인쇄할 때 씁니다.</p>
       <div id="pm" class="hidden"></div>
       <div class="row end">
         <button data-close>닫기</button>
-        <button id="drive">구글 드라이브에 저장 (원본)</button>
-        <button class="primary" id="doPrint">인쇄 / PDF로 저장</button>
+        <button id="doPrint">인쇄</button>
+        <button class="primary" id="drive">구글 드라이브에 저장 (원본)</button>
       </div>`, (back, close) => {
       $('#doPrint', back).addEventListener('click', () => {
         const area = $('#print-area');
@@ -1446,7 +1445,9 @@
       });
       $('#drive', back).addEventListener('click', async (e) => {
         const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${$('#doc-css').textContent}
-          body{margin:0}</style></head>
+          body{margin:0}
+          /* 구글의 PDF 변환은 쪽 너비에 꽉 찬 표의 오른쪽 테두리를 잘라 먹으므로 표를 아주 조금 좁힙니다. */
+          .print-root .doc table{width:99.4%}</style></head>
           <body><div class="print-root">${buildPrintHtml(r, $('#audit', back).checked)}</div></body></html>`;
         try {
           const res = await busy(e.currentTarget, () => call('savePdf', { token: state.adminToken, meetingId: r.meeting.id, html }));
