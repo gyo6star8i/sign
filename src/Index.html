@@ -580,6 +580,19 @@
       + ` → ${q.result.text}`;
   }
 
+  /**
+   * 표의 모든 칸 너비를 정해 둡니다(합계 100%). 구글의 PDF 변환은 너비가 빠진 칸을 거의 0으로 줄여
+   * 글자가 한 자씩 세로로 늘어서므로, 마지막 칸까지 빠짐없이 지정합니다.
+   */
+  function colgroup(widths) {
+    return `<colgroup>${widths.map((w) => `<col style="width:${w}%">`).join('')}</colgroup>`;
+  }
+  function signCols(n) {
+    const first = n > 8 ? 11 : 13;
+    const rest = Math.floor((100 - first) / Math.max(n, 1) * 100) / 100;
+    return [first].concat(Array.from({ length: n }, () => rest));
+  }
+
   /** 공적심사위원회: 공적심사의결서 + 회의록, 일반: 회의록만 */
   function renderDocs(m, members, opts) {
     return (m.type === AWARD ? renderAward(m, members, opts) : '') + renderDoc(m, members, opts);
@@ -598,8 +611,7 @@
         <h1>공적심사의결서</h1>
         <div class="award-org">${esc(a.org)}</div>
         <table class="award-main">
-          <colgroup><col style="width:15%"><col style="width:11%"><col style="width:11%"><col style="width:16%">
-            <col style="width:9%"><col style="width:9%"><col></colgroup>
+          ${colgroup([15, 11, 11, 16, 9, 9, 29])}
           <tr><th>제목</th><td colspan="6" class="l">${esc(a.title)}</td></tr>
           <tr><th>일시</th><td colspan="6" class="l">${esc(m.datetime)}</td></tr>
           <tr><th>장소</th><td colspan="6" class="l">${esc(m.place)}</td></tr>
@@ -634,6 +646,7 @@
       <div class="doc">
         <h1>- ${esc(m.title)} -</h1>
         <table class="info">
+          ${colgroup([18, 82])}
           <tr><th>일 시</th><td>${esc(m.datetime)}</td></tr>
           <tr><th>장 소</th><td>${esc(m.place)}</td></tr>
           <tr><th>위 원</th><td>${esc(m.committee)}</td></tr>
@@ -646,7 +659,7 @@
         <div class="date">${esc(m.confirmDate)}</div>
         <div class="school">${esc(m.school)}</div>
         <table class="sign">
-          <colgroup><col style="width:${cols > 8 ? 11 : 13}%">${members.map(() => '<col>').join('')}</colgroup>
+          ${colgroup(signCols(cols))}
           ${row('r-role', '구분', (x) => esc(x.role))}
           ${row('r-pos', '직위', (x) => esc(x.position))}
           ${row('r-name', '성명', (x) => esc(x.name))}
@@ -677,7 +690,8 @@
       <div class="doc audit">
         <h1>전자서명 확인 내역 (감사추적)</h1>
         <table style="margin-bottom:4mm">
-          <tr><th style="width:22%">문서</th><td style="text-align:left">${esc(m.title)}</td></tr>
+          ${colgroup([22, 78])}
+          <tr><th>문서</th><td style="text-align:left">${esc(m.title)}</td></tr>
           <tr><th>문서번호</th><td style="text-align:left" class="hash">${esc(m.id)}</td></tr>
           <tr><th>작성 / 최종 수정</th><td style="text-align:left">${esc(m.createdAt)} / ${esc(m.updatedAt)}</td></tr>
           <tr><th>문서 확인값(SHA-256)</th><td style="text-align:left" class="hash">${esc(docHash)}</td></tr>
@@ -688,8 +702,9 @@
             ? ' (공적심사위원회: 위원별 가/부 의결 후 1회 서명, 공적심사의결서와 회의록에 같은 서명 표시)' : ''}</td></tr>
         </table>
         <table>
-          <tr><th style="width:5%">번호</th><th style="width:11%">구분</th><th style="width:11%">성명</th>${m.type === AWARD ? '<th style="width:6%">의결</th>' : ''}<th style="width:17%">최초 열람</th>
-            <th style="width:17%">서명 일시</th><th style="width:21%">서명 기기</th><th>서명 당시 문서 확인값</th></tr>
+          ${colgroup(m.type === AWARD ? [7, 9, 9, 6, 15, 15, 19, 20] : [7, 10, 10, 16, 16, 20, 21])}
+          <tr><th>번호</th><th>구분</th><th>성명</th>${m.type === AWARD ? '<th>의결</th>' : ''}<th>최초 열람</th>
+            <th>서명 일시</th><th>서명 기기</th><th>서명 당시 확인값</th></tr>
           ${members.map((x, i) => {
             const sl = signLog(x.memberId);
             const mismatch = x.docHash && x.docHash !== docHash;
@@ -700,7 +715,8 @@
         </table>
         <h1 style="font-size:11pt;text-align:left;margin:6mm 0 2mm">처리 이력</h1>
         <table>
-          <tr><th style="width:24%">일시</th><th style="width:22%">처리</th><th style="width:16%">대상</th><th>내용</th></tr>
+          ${colgroup([22, 18, 14, 46])}
+          <tr><th>일시</th><th>처리</th><th>대상</th><th>내용</th></tr>
           ${events.map((l) => `<tr><td>${esc(l.time)}</td><td>${esc(LOG_LABEL[l.action] || l.action)}</td>
             <td>${esc((byId[l.memberId] && byId[l.memberId].name) || (l.memberId ? '-' : '관리자'))}</td>
             <td style="text-align:left;font-size:8pt">${esc(l.action === 'sign' || l.action === 'login' ? devOf(l) : /password|reset-signature|login-fail/.test(l.action) ? '' : l.detail)}</td></tr>`).join('')}
