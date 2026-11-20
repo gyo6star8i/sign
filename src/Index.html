@@ -539,10 +539,23 @@
   }
 
   /**
+   * 불참 표시를 채운 위원 목록. 불참 처리한 사유를 쓰고, 마감된 회의록에서 서명하지 않은 위원은 '불참'으로 둡니다.
+   * (아직 서명 받는 중이면 빈칸 그대로)
+   */
+  function withAbsence(m, members) {
+    return members.map((x) => {
+      if (x.signedAt || x.signed) return x;
+      const a = x.absence || (m.status === 'closed' ? '불참' : '');
+      return a === (x.absence || '') ? x : Object.assign({}, x, { absence: a });
+    });
+  }
+
+  /**
    * 성원·의결 계산. 성원: 재적 위원 절반 이상 참석, 의결: 참석 위원 과반수 찬성.
    * 공적심사는 가/부로, 일반 회의록은 서명(동의)으로 셉니다. 불참 처리된 위원은 참석에서 빠집니다.
    */
   function quorumOf(m, members) {
+    members = withAbsence(m, members);
     const total = members.length;
     const absent = members.filter((x) => x.absence && !x.signedAt).length;
     const present = total - absent;
@@ -575,6 +588,7 @@
   /** 공적심사의결서. 위원 한 번의 서명이 회의록 서명표와 이 표의 '서명' 칸에 함께 들어갑니다. */
   function renderAward(m, members, opts) {
     opts = opts || {};
+    members = withAbsence(m, members);
     const a = m.award || defaultAward();
     const noms = (a.nominees && a.nominees.length) ? a.nominees : [{}];
     const sigCell = sigCellFn(opts);
@@ -611,6 +625,7 @@
 
   function renderDoc(m, members, opts) {
     opts = opts || {};
+    members = withAbsence(m, members);
     const cols = members.length;
     const sigCell = sigCellFn(opts);
     const row = (cls, label, cell) =>
@@ -651,6 +666,7 @@
   /** 전자서명 확인 내역(감사추적) 페이지 */
   function renderAudit(m, members, docHash, logs) {
     logs = logs || [];
+    members = withAbsence(m, members);
     const byId = {};
     members.forEach((x) => { byId[x.memberId] = x; });
     const firstView = (id) => { const l = logs.find((x) => x.memberId === id && x.action === 'login'); return l ? l.time : ''; };
@@ -1211,8 +1227,9 @@
     const m = r.meeting;
     const total = r.members.length;
     const signed = r.members.filter((x) => x.signedAt).length;
-    const absent = r.members.filter((x) => x.absence && !x.signedAt).length;
     const closed = m.status === 'closed';
+    r.members = withAbsence(m, r.members);
+    const absent = r.members.filter((x) => x.absence && !x.signedAt).length;
     const isAward = m.type === AWARD;
     const q = quorumOf(m, r.members);
     app.innerHTML = `

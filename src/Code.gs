@@ -175,7 +175,7 @@ function listMeetings(p) {
         id: m.id, title: m.title, datetime: m.datetime, confirmDate: m.confirmDate,
         status: m.status, createdAt: m.createdAt, type: m.type || '',
         total: ms.length, signed: ms.filter((x) => x.signedAt).length,
-        absent: ms.filter((x) => x.absence && !x.signedAt).length,
+        absent: ms.filter((x) => absenceOf(m, x)).length,
       };
     })
     .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
@@ -369,7 +369,7 @@ function savePdf(p) {
   const sha256 = toHex(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, blob.getBytes()));
   const dh = docHash(meeting, membersOf(meeting.id));
   const signers = membersOf(meeting.id).map((m) => Object.assign({ name: m.name, role: m.role, signedAt: m.signedAt },
-    meeting.type === AWARD ? { vote: m.vote || '' } : {}, m.absence && !m.signedAt ? { absence: m.absence } : {}));
+    meeting.type === AWARD ? { vote: m.vote || '' } : {}, absenceOf(meeting, m) ? { absence: absenceOf(meeting, m) } : {}));
   appendObj(getSheet(SHEETS.PDFS), SHEETS.PDFS, {
     meetingId: meeting.id, fileId: file.getId(), name: file.getName(), sha256, docHash: dh, createdAt: nowStr(),
     title: meeting.title, school: meeting.school, confirmDate: meeting.confirmDate, signers: JSON.stringify(signers),
@@ -538,6 +538,13 @@ function publicMeeting(m) {
   out.type = m.type === AWARD ? AWARD : '';
   out.award = out.type === AWARD ? awardOf(m) : null;
   return out;
+}
+
+/** 불참 표시: 불참 처리한 사유, 또는 마감된 회의록에서 서명하지 않은 위원은 '불참'. */
+function absenceOf(meeting, member) {
+  if (member.signedAt) return '';
+  if (member.absence) return member.absence;
+  return meeting.status === 'closed' ? '불참' : '';
 }
 
 /** 공적심사의결서 입력값 정리(항목 순서를 고정해 문서 확인값이 항상 같게 나오도록 합니다). */

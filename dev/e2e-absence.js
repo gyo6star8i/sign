@@ -1,5 +1,6 @@
 // 불참 처리·성원/의결 계산 테스트: node dev/server.js 를 켠 뒤 node dev/e2e-absence.js <출력폴더>
-// 공적심사 8명 중 3명 불참(불참/출장/연수) → 참석 5명(성원 충족), 가 3 · 부 2 → 가결, 참석자 전원 서명 시 자동 마감.
+// 공적심사 8명 중 2명 불참 처리(불참/출장), 1명 미서명, 5명 서명(가 3 · 부 2).
+// 관리자가 마감하면 미서명 위원도 '불참'으로 표시되고, 참석 5명 기준으로 가결.
 const { chromium, devices } = require('playwright');
 const OUT = process.argv[2] || '.';
 const BASE = 'http://localhost:8787/exec';
@@ -27,13 +28,12 @@ const BASE = 'http://localhost:8787/exec';
   const creds = texts.map((t) => ({ link: t.match(/링크: (\S+)/)[1], pw: t.match(/비밀번호: (\d{6})/)[1] }));
   await admin.click('.modal [data-close]');
 
-  // 5~7번 위원 불참 처리 (불참 / 출장 / 직접 입력 '연수')
-  const reasons = { 5: null, 6: '출장', 7: '연수' };
-  for (const i of [5, 6, 7]) {
+  // 5~6번 위원 불참 처리 (불참 / 출장), 7번은 서명하지 않고 둠
+  const reasons = { 5: null, 6: '출장' };
+  for (const i of [5, 6]) {
     await admin.click(`tr[data-mid]:nth-of-type(${i + 2}) [data-act=absent]`);
     await admin.waitForSelector('#absText');
     if (reasons[i] === '출장') await admin.click('[data-chip="출장"]');
-    if (reasons[i] === '연수') await admin.fill('#absText', '연수');
     await admin.click('#absSave');
     await admin.waitForSelector('.modal-back', { state: 'detached' });
     await admin.waitForSelector('.quorum');
@@ -76,7 +76,10 @@ const BASE = 'http://localhost:8787/exec';
   await admin.click('tr.click');
   await admin.waitForSelector('.quorum');
   console.log('quorum after:', (await admin.textContent('.quorum')).replace(/\s+/g, ' ').trim());
-  console.log('closed:', await admin.textContent('#toggle'));
+  console.log('before close sig cells:', (await admin.$$eval('.doc.award td.sig', (tds) => tds.map((t) => t.textContent.trim() || (t.querySelector('img') ? '[서명]' : '_')))).join(' '));
+  await admin.click('#toggle'); // 서명 마감
+  await admin.waitForFunction(() => document.querySelector('#toggle') && document.querySelector('#toggle').textContent === '서명 다시 열기');
+  console.log('quorum after close:', (await admin.textContent('.quorum')).replace(/\s+/g, ' ').trim());
   console.log('award sig cells:', (await admin.$$eval('.doc.award td.sig', (tds) => tds.map((t) => t.textContent.trim() || (t.querySelector('img') ? '[서명]' : '_')))).join(' '));
   console.log('minutes sig cells:', (await admin.$$eval('.doc:not(.award) tr.r-sig td', (tds) => tds.map((t) => t.textContent.trim() || (t.querySelector('img') ? '[서명]' : '_')))).join(' '));
   await admin.screenshot({ path: OUT + '/b2-detail-done.png', fullPage: true });
